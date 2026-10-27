@@ -117,6 +117,36 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
     }
 
 
+def resolve_metrics_dir(requested: Path) -> Path:
+    """Resolve Frontier's canonical model/workload/run-id output location.
+
+    The Frontier CLI writes files under <output-root>/<model>/<workload>/<run-id>.
+    Accept either that specific directory or a root containing only one run.
+    """
+    if (requested / "metrics_ground_truth.jsonl").is_file():
+        return requested
+    if not requested.is_dir():
+        raise FileNotFoundError(f"Metrics directory does not exist: {requested}")
+    candidates = sorted(
+        path.parent for path in requested.rglob("metrics_ground_truth.jsonl")
+        if path.is_file()
+    )
+    if not candidates:
+        raise FileNotFoundError(
+            f"No metrics_ground_truth.jsonl found under {requested}. "
+            "Use: find <metrics-root> -name metrics_ground_truth.jsonl. "
+            "Frontier must be run with "
+            "--metrics_config_enable_metrics_ground_truth_trace."
+        )
+    if len(candidates) != 1:
+        paths = "\n  ".join(map(str, candidates))
+        raise ValueError(
+            "Multiple Frontier runs found; supply the exact run directory "
+            f"to --metrics-dir instead:\n  {paths}"
+        )
+    return candidates[0]
+
+
 def load_events(path: Path) -> list[dict]:
     if not path.is_file():
         raise FileNotFoundError(
@@ -165,16 +195,19 @@ def main() -> None:
     a = p.parse_args()
 
     manifest = json.loads(a.manifest.read_text(encoding="utf-8"))
-    events = load_events(a.metrics_dir / "metrics_ground_truth.jsonl")
+    metrics_dir = resolve_metrics_dir(a.metrics_dir)
+    events = load_events(metrics_dir / "metrics_ground_truth.jsonl")
     data = summary(events, manifest, a.slo_seconds)
-    data.update(read_request_csv_metrics(a.metrics_dir / "request_metrics.csv"))
-    system_file = a.metrics_dir / "system_metrics.json"
+    data.update(read_request_csv_metrics(metrics_dir / "request_metrics.csv"))
+    system_file = metrics_dir / "system_metrics.json"
+    data["metrics_directory"] = str(metrics_dir.resolve())
     data["system_metrics_json"] = str(system_file) if system_file.exists() else "not found"
-    dest = a.output or a.metrics_dir / "malleserve_summary.json"
+    dest = a.output or metrics_dir / "malleserve_summary.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
     print("Frontier Mooncake summary (SIMULATED; not Polaris-calibrated)")
+    print(f"  Metrics directory:     {metrics_dir}")
     print(f"  Measured arrivals:     {data['measured_arrivals']}")
     print(f"  Eventual completions:  {data['measured_completed_eventually']}")
     print(f"  SLO attainment:        {data['measured_slo_attainment']:.1%} "

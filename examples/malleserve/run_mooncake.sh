@@ -18,7 +18,8 @@ TRACE_MAX_TOKENS="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]
 OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/examples/malleserve/$RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 echo "Frontier trace: $TRACE_FILE"
-echo "Metrics: $OUTPUT_DIR"
+echo "Metrics root: $OUTPUT_DIR"
+echo "Frontier stores each run under: <metrics-root>/<model>/<workload>/<run-id>"
 echo "Timing model: DUMMY (do not compare numerical values with Polaris)"
 python -m frontier.main \
   --simulation_mode online \

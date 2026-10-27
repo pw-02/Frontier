@@ -58,8 +58,16 @@ arbitrary smoke-test setting, NOT calibrated to Polaris.
 
 Inspect:
 
-    ls outputs/examples/malleserve/smoke_r2/
-    cat outputs/examples/malleserve/smoke_r2/malleserve_summary.json
+    find outputs/examples/malleserve/smoke_r2 -name request_metrics.csv
+
+Frontier writes into a nested model/workload/run-id directory. For
+the included dummy online-serving example, the files are under:
+
+    outputs/examples/malleserve/smoke_r2/llama3_1_8b/online_serving/smoke_r2/
+
+The analyzer automatically discovers that single nested run directory
+when you provide the outer metrics root. It writes malleserve_summary.json
+next to Frontier's request_metrics.csv.
 
 The runner records:
 - metrics_ground_truth.jsonl: simulated request arrivals/completions, in seconds

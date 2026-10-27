@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import unittest
+from tempfile import TemporaryDirectory
 
 
 BASE = Path(__file__).resolve().parents[2] / "examples" / "malleserve"
@@ -92,6 +93,30 @@ class MooncakeBridgeTests(unittest.TestCase):
         self.assertEqual(result["measured_slo_successes_allowing_drain"], 2)
         self.assertEqual(result["measured_completion_throughput_in_window_rps"], 1.0)
         self.assertEqual(result["measured_slo_attainment"], .5)
+
+    def test_find_nested_frontier_run_directory(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / "llama3_1_8b" / "online_serving" / "smoke_r2"
+            run.mkdir(parents=True)
+            (run / "metrics_ground_truth.jsonl").write_text("", encoding="utf-8")
+            self.assertEqual(ana.resolve_metrics_dir(root), run)
+            self.assertEqual(ana.resolve_metrics_dir(run), run)
+
+    def test_reject_ambiguous_run_directories(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for run_id in ("smoke_r2", "smoke_r4"):
+                run = root / "llama3_1_8b" / "online_serving" / run_id
+                run.mkdir(parents=True)
+                (run / "metrics_ground_truth.jsonl").write_text("", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "Multiple Frontier runs"):
+                ana.resolve_metrics_dir(root)
+
+    def test_missing_trace_explains_flag(self):
+        with TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(FileNotFoundError, "enable_metrics_ground_truth_trace"):
+                ana.resolve_metrics_dir(Path(directory))
 
     def test_dataset_exhaustion_fails_before_replay(self):
         with self.assertRaisesRegex(ValueError, "Not enough prepared requests"):
