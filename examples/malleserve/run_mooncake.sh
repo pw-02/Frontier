@@ -27,7 +27,7 @@ python -m frontier.main \
   --cc_backend_config_type analytical \
   --cluster_config_num_replicas 1 \
   --cluster_scheduler_config_type sticky_round_robin \
-  --replica_config_model_name llama3.1-8b \
+  --replica_config_model_name Qwen/Qwen3-8B \
   --replica_config_device a100 \
   --replica_config_attn_tensor_parallel_size 1 \
   --replica_config_num_pipeline_stages 1 \
