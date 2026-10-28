@@ -1,0 +1,27 @@
+attn_tp: null
+block_shape: null
+device: a100
+disable_ray: true
+disable_replicated: false
+extra_num_tokens: null
+ffn_tp: null
+include_target_embedded_mtp: false
+is_moe: false
+max_tokens: 4096
+models:
+- Qwen/Qwen3-8B
+moe_tp: null
+num_gpus: 1
+num_tensor_parallel_workers:
+- 1
+num_tokens_list:
+- 1
+- 16
+- 128
+- 512
+output_dir: data/profiling_smoke
+precision: null
+profile_method: cuda_event
+ray_enable_datasets_serializers: false
+skip_confirmation: true
+use_fp8: null
