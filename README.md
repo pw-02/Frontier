@@ -74,6 +74,8 @@ Frontier is designed for what-if studies that would be expensive or slow to run 
 
 ## Quick Start and Examples
 
+**MalleServe / Polaris calibration:** see the [Mooncake trace replay and Qwen3-8B/A100 measured-timing calibration guide](examples/malleserve/README.md) for profiling datasets, mixed-attention merging, four-replica simulation, and validation against the measured Polaris fixed-worker baseline.
+
 Install the release package and test extras from the repository root.
 
 
