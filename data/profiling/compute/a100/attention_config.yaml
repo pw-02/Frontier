@@ -50,7 +50,7 @@ num_tensor_parallel_workers:
 - 1
 output_dir: data/profiling
 precision: null
-profile_method: cuda_event
+profile_method: record_function
 profile_only_decode: false
 profile_only_prefill: false
 skip_confirmation: true

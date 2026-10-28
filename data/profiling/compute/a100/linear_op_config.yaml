@@ -37,7 +37,7 @@ num_tokens_list:
 - 16384
 output_dir: data/profiling
 precision: null
-profile_method: cuda_event
+profile_method: record_function
 ray_enable_datasets_serializers: false
 skip_confirmation: true
 use_fp8: null
