@@ -1,0 +1,5 @@
+extends: common.yaml
+experiment:
+  name: fixed8_r10
+resources:
+  gpus: 8
