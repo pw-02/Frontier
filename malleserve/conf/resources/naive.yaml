@@ -1,3 +1,4 @@
+label: naive
 mode: transient
 persistent_gpus: 4
 transient_gpus_per_node: 4
