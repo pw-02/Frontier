@@ -48,15 +48,14 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
     elif resource["mode"] == "transient":
         if int(resource["candidate_nodes"]) != 2:
             raise ValueError("Current rotation generator supports 2 candidate nodes")
+        lifecycle_mode = str(resource.get("lifecycle_mode", "naive"))
+        candidate_count = 1 if lifecycle_mode == "no_reclamation" else int(resource["candidate_nodes"])
         count = int(resource["persistent_gpus"]) + (
-            int(resource["candidate_nodes"]) * int(resource["transient_gpus_per_node"]))
+            candidate_count * int(resource["transient_gpus_per_node"]))
         schedule = out / "availability.jsonl"
         lifetime = float(resource["node_lifetime_seconds"])
         duration = float(resource["duration_seconds"])
-        lifecycle_mode = str(resource.get("lifecycle_mode", "naive"))
         if lifecycle_mode == "no_reclamation":
-            # One transient node becomes available and remains so for the
-            # entire observed workload. Reclaim after the observation window.
             events = [
                 {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
                 {"timestamp": duration + max(1.0, float(resource["startup_seconds"])),
