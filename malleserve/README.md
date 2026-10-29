@@ -69,3 +69,39 @@ Validation (once the simulations have finished):
 ```bash
 python -m malleserve.validate validation.polaris=data/malleserve/validation/polaris_summary.csv
 ```
+
+## Controlled transient recovery modes
+
+The native transient lifecycle supports three controls through
+`resources.lifecycle_mode` while keeping `policy=naive` for routing:
+
+- `naive`: physical node rotations, full request replay after reclamation.
+- `no_reclamation`: one four-GPU candidate joins once and stays online.
+- `ideal_recovery`: identical rotation to `naive`; zero-time restoration
+  of **committed token progress and KV context** with destination KV block
+  capacity enforced. This is an experimental **oracle abstraction**, not
+  an implemented KV transport protocol. In-flight work not committed at
+  the reclaim event is not preserved, and no migration/transfer time is
+  charged. Requests can wait for destination memory admission.
+
+For an apples-to-apples 10 RPS comparison:
+
+```bash
+python -m malleserve.debug_run \
+  resources=naive policy=naive workload=mooncake_r10 \
+  resources.lifecycle_mode=ideal_recovery \
+  resources.startup_seconds=40 \
+  experiment.name=oracle_r10_l60_s40
+```
+
+The output `transient_lifecycle.json` includes
+`recovery_mode`, `oracle_restored_requests`, `oracle_restored_tokens`
+and existing per-replica reclamation diagnostics. `retries` counts
+interrupted request assignments in both modes; `lost_processed_tokens`
+only counts discarded progress for `naive`.
+
+**Validation status:** Unit tests cover core reclamation state accounting,
+but full native end-to-end oracle replay against the reference configuration
+must be exercised before treating the oracle results as calibrated performance
+claims. In particular, review queue admission, KV block occupancy, P95,
+logical completion counts and multi-reclamation cases.
