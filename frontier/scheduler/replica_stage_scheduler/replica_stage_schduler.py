@@ -463,6 +463,16 @@ class ReplicaStageScheduler:
                 num_layers=num_layers,
                 layer_id=layer_id,
             )
+            # Diagnostic-only: reprice the *same scheduler-produced batch*.
+            # It is opt-in because extra predictor calls can affect model
+            # caches/counters and should not be used for benchmark results.
+            import os
+            if os.environ.get("FRONTIER_DECODE_REPLAY_PATH"):
+                from frontier.scheduler.utils.decode_prediction_replay import maybe_probe
+                maybe_probe(
+                    batch, execution_time, self._execution_time_predictor,
+                    self._stage_id, self._cluster_type, num_layers, layer_id,
+                )
             if info_logging_enabled:
                 debug_logger.info(
                     "[PREDICT_STAGE_RETURNED] batch_id=%s, total_time=%s",
