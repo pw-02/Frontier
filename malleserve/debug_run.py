@@ -31,7 +31,7 @@ def main(scenario: dict) -> None:
     finally:
         sys.argv = previous_argv
 
-    from examples.malleserve.analyze_mooncake import (
+    from malleserve.tools.analyze_mooncake import (
         load_events, resolve_metrics_dir, summary,
         read_request_csv_metrics,
     )

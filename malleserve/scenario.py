@@ -28,7 +28,7 @@ def load_scenario(path: Path) -> dict:
 
 
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
-    from examples.malleserve.transient.generate_native_schedule import generate
+    from malleserve.tools.generate_native_schedule import generate
     if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "naive"):
         raise ValueError("Policy and resource mode mismatch")
     # Scenario already validated on file load, but overrides may be applied.

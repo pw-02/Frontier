@@ -13,7 +13,7 @@ import tempfile
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SOURCE = ROOT / "examples" / "malleserve" / "transient" / "simulate.py"
+SOURCE = ROOT / "malleserve" / "experimental_macro" / "simulate.py"
 spec = importlib.util.spec_from_file_location("malleserve_transient_macro", SOURCE)
 assert spec is not None and spec.loader is not None
 macro = importlib.util.module_from_spec(spec)

@@ -7,7 +7,7 @@ import unittest
 from tempfile import TemporaryDirectory
 
 
-BASE = Path(__file__).resolve().parents[2] / "examples" / "malleserve"
+BASE = Path(__file__).resolve().parents[2] / "malleserve" / "tools"
 
 
 def module_from_path(name: str, filename: str):
