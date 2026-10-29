@@ -459,6 +459,9 @@ def run_scenarios(
     output_dir.mkdir(parents=True, exist_ok=True)
     results = []
     for mode in ("fixed_persistent", "fixed_stable", "naive", "ideal"):
+        # Count profile coverage separately for each policy.
+        work.direct_matches = 0
+        work.estimated_matches = 0
         # New Request state for every mode; identical source arrivals and work.
         requests = read_trace(trace, work)
         sim = Experiment(
