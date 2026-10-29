@@ -234,6 +234,16 @@ class Simulator:
         else:
             logger.info("Sequential processing mode enabled")
 
+        # Enable native transient worker lifecycle before scheduling any arrivals.
+        # Absence of a schedule leaves ordinary fixed-capacity simulations unchanged.
+        self._transient_lifecycle = None
+        if getattr(self._config, "transient_schedule_file", None):
+            from frontier.transient_lifecycle import NativeTransientLifecycle
+
+            self._transient_lifecycle = NativeTransientLifecycle(
+                self._config, self._global_scheduler
+            )
+
         # Initialize simulation mode (parallel or sequential)
         self._init_simulation_mode()
 
@@ -672,6 +682,31 @@ class Simulator:
                         complete_details,
                     )
 
+                if (
+                    self._transient_lifecycle is not None
+                    and event.__class__.__name__ == "ReplicaLifecycleEvent"
+                    and event.action == "reclaim"
+                ):
+                    # An abrupt host removal invalidates *all* queued native
+                    # GPU-stage events for its replicas. Do this before adding
+                    # newly generated retry/scheduling events. Replacing the
+                    # per-replica scheduler discards KV and running-batch state.
+                    removed_ids = set(
+                        self._transient_lifecycle.node_replicas[event.node]
+                    )
+                    before = len(self._event_queue)
+                    self._event_queue = [
+                        item for item in self._event_queue
+                        if not (
+                            getattr(item[1], "_replica_id", None) in removed_ids
+                            and getattr(item[1], "_cluster_type", ClusterType.MONOLITHIC)
+                            == ClusterType.MONOLITHIC
+                        )
+                    ]
+                    heapq.heapify(self._event_queue)
+                    self._transient_lifecycle.stale_event_purges += (
+                        before - len(self._event_queue)
+                    )
                 self._add_events(new_events)
 
                 if self._config.metrics_config.write_json_trace:
@@ -1340,6 +1375,17 @@ class Simulator:
                 )
                 self._add_event(
                     RequestArrivalEvent(request.arrived_at, request, cluster_type)
+                )
+
+        if self._transient_lifecycle is not None:
+            from frontier.events.replica_lifecycle_event import ReplicaLifecycleEvent
+
+            for change in self._transient_lifecycle.events:
+                self._add_event(
+                    ReplicaLifecycleEvent(
+                        change.time, self._transient_lifecycle,
+                        change.action, change.node,
+                    )
                 )
 
     def _set_time(self, time: float) -> None:
