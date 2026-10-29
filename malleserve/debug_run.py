@@ -15,11 +15,22 @@ from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
 from malleserve.scenario import prepare
+from malleserve.run_state import ensure_trace, fingerprint, is_complete, mark_complete, resolve, SUCCESS
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main(scenario: dict) -> None:
+    trace, manifest = ensure_trace(scenario["workload"], int(scenario["scheduler"]["block_size"]))
+    output = resolve("outputs/malleserve/runs") / scenario["experiment"]["name"]
+    identity = fingerprint(scenario, trace, manifest)
+    if scenario["experiment"].get("skip_completed", True) and is_complete(output, identity):
+        print(f"[MalleServe] SKIP complete: {output}", flush=True)
+        return
+    if output.exists() and any(output.iterdir()):
+        # Stale partial runs and old unmarked results are not safe to overwrite.
+        raise FileExistsError(f"Output exists but is not a matching completed run: {output}. "
+                              "Move/delete it before rerunning, or use another experiment.name.")
     args, output, manifest = prepare(scenario)
     print(f"Debugging scenario {scenario['experiment']['name']}, output={output}", flush=True)
     # This is equivalent to python -m frontier.main [args], except the debugger
@@ -55,7 +66,8 @@ def main(scenario: dict) -> None:
             parent.rmdir()
             parent = parent.parent
     destination = output / "malleserve_summary.json"
-    destination.write_text(json.dumps(data, indent=2) + "\\n", encoding="utf-8")
+    destination.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    mark_complete(output, identity)
     print(f"Results: {destination}")
 
 
