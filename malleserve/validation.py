@@ -66,7 +66,25 @@ def find_frontier(root: Path, workers: int, rate: int):
                for path in (root / name).rglob("malleserve_summary.json") if path.is_file()]
     if len(matches) > 1:
         raise ValueError(f"Multiple Frontier summaries for GPUs={workers}, RPS={rate}")
-    return json.loads(matches[0].read_text(encoding="utf-8")) if matches else None
+    if not matches:
+        return None
+    path = matches[0]
+    raw = path.read_text(encoding="utf-8")
+    try:
+        result = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        # Older MalleServe runs could leave a literal backslash-n suffix.
+        # Accept *only* that exact artifact; never silently ignore extra JSON.
+        if raw.endswith("\\\\n") and not raw.endswith("\n"):
+            try:
+                result = json.loads(raw[:-2])
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid Frontier summary {path}: {exc}") from exc
+        else:
+            raise ValueError(f"Invalid Frontier summary {path}: {exc}") from exc
+    if not isinstance(result, dict):
+        raise ValueError(f"Frontier summary must be a JSON object: {path}")
+    return result
 
 
 def compare(polaris: Path, frontier: Path, output: Path) -> list[dict]:
