@@ -43,6 +43,9 @@ class FakeRequest:
         self._num_prefill_tokens = self._num_processed_tokens
         self._num_decode_tokens = total - self._num_prefill_tokens
         self._num_processed_tokens = 0
+        self._prefill_completed_at = 0.0
+        self._first_decode_token_completed_at = 0.0
+        self._decode_first_token_completed_at = 0.0
 
     def on_enter_waiting_queue(self, time, cluster):
         self.arrived = time
