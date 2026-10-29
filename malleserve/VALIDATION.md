@@ -1,3 +1,30 @@
+## Preferred input: Polaris summary CSV
+
+The `fixed_capacity` analysis CSV is sufficient for **sweep-level**
+validation; you do not need to copy the full `runs/` tree just to compare
+latency, throughput, SLO and backlog.
+
+```bash
+python -m malleserve.validate \
+  validation.polaris=/path/to/polaris_validation_summary.csv \
+  validation.frontier=outputs/examples/malleserve \
+  validation.output=outputs/malleserve/validation/fixed_capacity_comparison.csv
+```
+
+Each source row is preserved, including repeated runs at the same
+GPU/RPS combination (e.g. two 6-GPU/12-RPS runs). A missing or failed
+Polaris run is not treated as a valid accuracy target. The validity flag
+requires `validity_status=completed`, `submission_pct>=99`, zero
+failures and explicitly zero dropped iterations. Empty dropped-iteration
+cells mean **unknown**, not zero. Frontier results are matched by the
+resource count and RPS using `fixed{workers}_mooncake_r{rate}`.
+Duplicate Polaris repeats share that Frontier result and are separately
+preserved in the output.
+
+This is a **summary-level** comparison only. For request-level latency
+distributions, prefill/decode attribution, matching actual output lengths,
+or debugging missing arrivals, retain the full logs from Polaris.
+
 # Fixed-capacity Polaris ↔ Frontier validation
 
 Run Frontier with **fixed** Hydra resources and replay the *same* Mooncake CSV for
