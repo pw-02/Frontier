@@ -204,6 +204,40 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(r._oracle_restore_pending, 137)
         self.assertEqual(r.num_processed_tokens, 137)
 
+    def test_oracle_kv_restore_obeys_physical_capacity(self):
+        from frontier.kv_cache.base_kv_cache_manager import KVCacheManager
+        from collections import defaultdict
+
+        class Pool:
+            def __init__(self):
+                self.free_blocks = 2
+
+            def get_num_free_blocks(self):
+                return self.free_blocks
+
+            def get_new_blocks(self, amount):
+                self.free_blocks -= amount
+                return SimpleNamespace(blocks=[object() for _ in range(amount)])
+
+        manager = SimpleNamespace(
+            req_to_blocks=defaultdict(list),
+            block_pool=Pool(),
+            block_size=16,
+            num_cached_blocks={},
+        )
+        request = FakeRequest(200, processed=33)
+        # 33 committed tokens need 3 blocks, not available initially.
+        self.assertFalse(KVCacheManager.restore_oracle_slots(manager, request, 33))
+        self.assertEqual(manager.block_pool.free_blocks, 2)
+        self.assertEqual(manager.req_to_blocks[200], [])
+        # 32 tokens fit into 2 blocks, with no fake prefix-cache hits.
+        self.assertTrue(KVCacheManager.restore_oracle_slots(manager, request, 32))
+        self.assertEqual(manager.block_pool.free_blocks, 0)
+        self.assertEqual(len(manager.req_to_blocks[200]), 2)
+        self.assertEqual(manager.num_cached_blocks[200], 2)
+        with self.assertRaisesRegex(RuntimeError, "already owns KV blocks"):
+            KVCacheManager.restore_oracle_slots(manager, request, 32)
+
     def test_allocation_ownership_check_fails_closed(self):
         worker = FakeReplicaScheduler()
         worker._allocation_map = {123: 4}
