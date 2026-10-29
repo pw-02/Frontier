@@ -317,6 +317,8 @@ class NativeTransientLifecycle:
                 original_output = int(req._user_facing_num_decode_tokens)
                 committed = max(0, int(req.num_processed_tokens))
                 prefill_complete = bool(getattr(req, "is_prefill_complete", False))
+                prefill_completed_at = getattr(req, "_prefill_completed_at", 0)
+                first_decode_completed_at = getattr(req, "_first_decode_token_completed_at", 0)
                 if self.recovery_mode == "naive":
                     self.lost_processed_tokens += committed
                 req._num_prefill_tokens = original_prompt
