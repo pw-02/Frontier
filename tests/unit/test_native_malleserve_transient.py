@@ -106,6 +106,16 @@ class AvailabilityParsingTests(unittest.TestCase):
                  AvailabilityChange(10, "a", "reclaim")],
             )
 
+    def test_available_without_reclaim_is_valid_for_no_reclamation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "schedule.jsonl"
+            path.write_text(json.dumps({
+                "timestamp": 0, "node_id": "transient-0", "action": "available"
+            }) + "\\n")
+            events = read_availability(str(path))
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0].action, "available")
+
     def test_unmatched_reclaim_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "schedule.jsonl"

@@ -56,10 +56,10 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         lifetime = float(resource["node_lifetime_seconds"])
         duration = float(resource["duration_seconds"])
         if lifecycle_mode == "no_reclamation":
+            # No terminal reclaim: the candidate remains active through
+            # the complete request-drain period as well as measurement.
             events = [
                 {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
-                {"timestamp": duration + max(1.0, float(resource["startup_seconds"])),
-                 "node_id": "transient-0", "action": "reclaim"},
             ]
         elif lifecycle_mode == "naive":
             events = generate(duration, lifetime)
