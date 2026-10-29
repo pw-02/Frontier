@@ -40,6 +40,7 @@ def validate_prefix_cache_config(
     if num_replicas > 1 and cluster_scheduler_type not in {
         ClusterSchedulerType.STICKY_ROUND_ROBIN,
         ClusterSchedulerType.STICKY_LOR,
+        ClusterSchedulerType.ROUND_ROBIN,
     }:
         raise ValueError(
             "Multi-replica prefix caching requires a sticky cluster scheduler. "
