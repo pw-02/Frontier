@@ -1,52 +1,15 @@
 """Compare Polaris fixed-capacity run(s) with native Frontier output.
 
-Supports an uploaded ZIP of a single run or a directory tree of Polaris runs.
+Uses the consolidated Polaris validation summary CSV as its sole input.
 Never treats HTTP client latency as an exact match for simulated engine latency.
 """
 from __future__ import annotations
 
 import csv
 import json
-import re
-import zipfile
 from pathlib import Path
 
 NAME = re.compile(r"fixed-workers-(\d+)-r(\d+)")
-
-
-def polaris_runs(path: Path):
-    if path.is_file() and path.suffix.lower() == ".zip":
-        with zipfile.ZipFile(path) as z:
-            names = z.namelist()
-            for member in names:
-                if not member.endswith("/summary.json"):
-                    continue
-                match = NAME.search(member)
-                if not match:
-                    continue
-                base = member.rsplit("/", 1)[0] + "/"
-                config_name = base + "config.json"
-                if config_name not in names:
-                    continue
-                yield int(match[1]), int(match[2]), json.loads(z.read(member)), json.loads(z.read(config_name)), member
-    else:
-        for file in sorted(path.rglob("summary.json")):
-            match = NAME.search(str(file))
-            if not match or not (file.parent / "config.json").exists():
-                continue
-            yield int(match[1]), int(match[2]), json.loads(file.read_text()), json.loads((file.parent / "config.json").read_text()), str(file)
-
-
-def find_frontier(root: Path, workers: int, rate: int):
-    possible = []
-    # Canonical Hydra names and historical matrix validation names.
-    for name in (f"fixed{workers}_mooncake_r{rate}", f"validation_w{workers}_r{rate}"):
-        possible.extend(root.glob(f"{name}/**/malleserve_summary.json"))
-    if not possible:
-        return None
-    if len(possible) != 1:
-        raise ValueError(f"Multiple Frontier results for {workers} GPUs / {rate} RPS: {possible}")
-    return json.loads(possible[0].read_text())
 
 
 def _optional_number(value):
@@ -102,7 +65,9 @@ def _new_comparison_row(workers, rate, sim, reference):
 
 def compare(polaris: Path, frontier: Path, output: Path) -> list[dict]:
     rows = []
-    if polaris.is_file() and polaris.suffix.lower() == ".csv":
+    if not polaris.is_file() or polaris.suffix.lower() != ".csv":
+        raise ValueError("Polaris input must be a summary CSV file")
+    if True:
         for workers, rate, record in _from_csv(polaris):
             sim = find_frontier(frontier, workers, rate)
             rows.append(_new_comparison_row(workers, rate, sim, {
@@ -126,35 +91,6 @@ def compare(polaris: Path, frontier: Path, output: Path) -> list[dict]:
                 "polaris_completion_in_window_rps": _optional_number(record["completion_in_window_rps_est"]),
                 "polaris_backlog_est": _optional_number(record["measured_outstanding_at_end_est"]),
                 "polaris_prefix_cache_hit_pct": _optional_number(record.get("prefix_cache_hit_pct")),
-            }))
-    else:
-        for workers, rate, measured, config, source in polaris_runs(polaris):
-            exp = config["experiment"]
-            if exp["dp_size"] != workers or exp["rate"] != rate or exp["arrival_mode"] != "constant_rate":
-                raise ValueError(f"Incompatible Polaris configuration: {source}")
-            client = measured["client"]
-            latency = client["e2e_latency_seconds"]
-            submitted = client.get("measured_load_requests")
-            if submitted is None:
-                submitted = client.get("successful_checks")
-            dropped = client.get("dropped_iterations")
-            valid = (measured["validity"]["status"] == "completed"
-                     and submitted is not None
-                     and 100 * submitted / (rate * exp["measurement_seconds"]) >= 99
-                     and client.get("measured_load_failures") == 0 and dropped == 0)
-            sim = find_frontier(frontier, workers, rate)
-            rows.append(_new_comparison_row(workers, rate, sim, {
-                "polaris_source": source,
-                "polaris_run_id": Path(source).parent.name,
-                "polaris_validity_status": measured["validity"]["status"],
-                "polaris_valid_load": valid,
-                "polaris_measured_requests": submitted,
-                "polaris_failed_requests": client.get("measured_load_failures"),
-                "polaris_dropped_iterations": dropped,
-                "polaris_latency_mean_s": latency.get("average"),
-                "polaris_latency_p50_s": latency.get("p50"),
-                "latency_p95_s": latency.get("p95"),
-                "polaris_latency_p99_s": latency.get("p99"),
             }))
     if not rows:
         raise ValueError(f"No Polaris reference rows found in {polaris}")
