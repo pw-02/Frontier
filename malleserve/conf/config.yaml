@@ -1,0 +1,22 @@
+defaults:
+  - workload: mooncake_r10
+  - resources: naive
+  - model: qwen3_8b_a100
+  - scheduler: vllm_v1
+  - policy: naive
+  - _self_
+
+experiment:
+  name: ${policy.name}_${workload.name}
+
+metrics:
+  slo_seconds: 30
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
+  sweep:
+    dir: outputs/hydra
+    subdir: ${hydra.job.num}
