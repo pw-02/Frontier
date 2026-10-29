@@ -40,7 +40,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
     if not trace.is_file() or not manifest.is_file():
         raise FileNotFoundError(f"Missing trace/manifest: {trace}")
     max_tokens = json.loads(manifest.read_text(encoding="utf-8"))["required_frontier_max_tokens"]
-    out = ROOT / "outputs/examples/malleserve" / name
+    out = ROOT / "outputs/malleserve/runs" / name
     out.mkdir(parents=True, exist_ok=True)
     if resource["mode"] == "fixed":
         count = int(resource["gpus"])
