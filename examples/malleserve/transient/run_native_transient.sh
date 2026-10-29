@@ -11,7 +11,7 @@ TRACE_FILE="${1:?Usage: bash examples/malleserve/transient/run_native_transient.
 AVAILABILITY_FILE="${2:?Missing availability JSONL}"
 RUN_ID="${3:-native_transient}"
 MANIFEST="${TRACE_FILE%.csv}.manifest.json"
-[[ -f "$TRACE_FILE" && -f "$MANIFEST" && -f "$AVAILABILITY_FILE" ]] || {
+[[ -f "$TRACE_FILE" && -f "$MANIFEST" && ( "${RESOURCE_MODE:-transient}" == "fixed" || -f "$AVAILABILITY_FILE" ) ]] || {
   echo "Missing trace, manifest or transient availability JSONL" >&2
   exit 2
 }
@@ -20,7 +20,21 @@ PERSISTENT_REPLICAS="${PERSISTENT_REPLICAS:-4}"
 GPUS_PER_TRANSIENT_NODE="${GPUS_PER_TRANSIENT_NODE:-4}"
 TRANSIENT_CANDIDATE_NODES="${TRANSIENT_CANDIDATE_NODES:-2}"
 TRANSIENT_STARTUP_SECONDS="${TRANSIENT_STARTUP_SECONDS:-40}"
-TOTAL_REPLICAS=$((PERSISTENT_REPLICAS + GPUS_PER_TRANSIENT_NODE * TRANSIENT_CANDIDATE_NODES))
+RESOURCE_MODE="${RESOURCE_MODE:-transient}"
+if [[ "$RESOURCE_MODE" == "fixed" ]]; then
+  TOTAL_REPLICAS="${FIXED_REPLICAS:?FIXED_REPLICAS required for fixed mode}"
+  TRANSIENT_ARGS=()
+elif [[ "$RESOURCE_MODE" == "transient" ]]; then
+  TOTAL_REPLICAS=$((PERSISTENT_REPLICAS + GPUS_PER_TRANSIENT_NODE * TRANSIENT_CANDIDATE_NODES))
+  TRANSIENT_ARGS=(
+    --transient_schedule_file "$AVAILABILITY_FILE"
+    --transient_persistent_replicas "$PERSISTENT_REPLICAS"
+    --transient_replicas_per_node "$GPUS_PER_TRANSIENT_NODE"
+    --transient_startup_seconds "$TRANSIENT_STARTUP_SECONDS"
+  )
+else
+  echo "Unsupported RESOURCE_MODE: $RESOURCE_MODE" >&2; exit 2
+fi
 TRACE_MAX_TOKENS="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["required_frontier_max_tokens"])' "$MANIFEST")"
 OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/examples/malleserve/$RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
@@ -53,10 +67,7 @@ python -m frontier.main \
   --request_generator_config_type trace_replay \
   --trace_request_generator_config_trace_file "$TRACE_FILE" \
   --trace_request_generator_config_max_tokens "$TRACE_MAX_TOKENS" \
-  --transient_schedule_file "$AVAILABILITY_FILE" \
-  --transient_persistent_replicas "$PERSISTENT_REPLICAS" \
-  --transient_replicas_per_node "$GPUS_PER_TRANSIENT_NODE" \
-  --transient_startup_seconds "$TRANSIENT_STARTUP_SECONDS" \
+  "${TRANSIENT_ARGS[@]}" \
   --no-random_forrest_execution_time_predictor_config_enable_dummy_mode \
   --random_forrest_execution_time_predictor_config_atten_input_file data/profiling/compute/a100/Qwen/Qwen3-8B/attention_calibrated.csv \
   --random_forrest_execution_time_predictor_config_linear_op_kernel_only_input_file data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv \
