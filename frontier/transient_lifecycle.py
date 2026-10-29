@@ -319,6 +319,7 @@ class NativeTransientLifecycle:
                 prefill_complete = bool(getattr(req, "is_prefill_complete", False))
                 prefill_completed_at = getattr(req, "_prefill_completed_at", 0)
                 first_decode_completed_at = getattr(req, "_first_decode_token_completed_at", 0)
+                decode_first_completed_at = getattr(req, "_decode_first_token_completed_at", 0)
                 if self.recovery_mode == "naive":
                     self.lost_processed_tokens += committed
                 req._num_prefill_tokens = original_prompt
@@ -333,6 +334,7 @@ class NativeTransientLifecycle:
                     req._is_prefill_complete = prefill_complete
                     req._prefill_completed_at = prefill_completed_at
                     req._first_decode_token_completed_at = first_decode_completed_at
+                    req._decode_first_token_completed_at = decode_first_completed_at
                     req._oracle_restore_pending = committed
                     req._oracle_restored = False
                     self.oracle_restored_requests += 1
