@@ -226,6 +226,25 @@ class KVCacheManager:
             new_bindings=new_bindings,
         )
 
+    def restore_oracle_slots(self, request: Request, processed_tokens: int) -> bool:
+        """Reserve KV blocks for instant, zero-compute oracle state transfer.
+
+        The transfer itself has zero latency, but it consumes actual block
+        capacity. No prefix-cache hit is fabricated for migrated tokens.
+        """
+        if processed_tokens <= 0:
+            raise ValueError("Oracle restore requires positive committed progress")
+        if self.req_to_blocks.get(request.id):
+            raise RuntimeError("Oracle restore request already owns KV blocks")
+        from math import ceil
+        required = ceil(processed_tokens / self.block_size)
+        if required > self.block_pool.get_num_free_blocks():
+            return False
+        allocation = self.block_pool.get_new_blocks(required)
+        self.req_to_blocks[request.id].extend(allocation.blocks)
+        self.num_cached_blocks[request.id] = 0
+        return True
+
     def free(self, request: Request) -> None:
         request_blocks = self.req_to_blocks.pop(request.id, [])
         if request_blocks:

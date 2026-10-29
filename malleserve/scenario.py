@@ -64,18 +64,16 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         elif lifecycle_mode == "naive":
             events = generate(duration, lifetime)
         elif lifecycle_mode == "ideal_recovery":
-            raise NotImplementedError(
-                "Ideal recovery needs KV-state transfer/admission support; "
-                "Request.restart() recomputes the prefix and is not a zero-cost migration. "
-                "Failing closed rather than reporting invalid idealized results."
-            )
+            events = generate(duration, lifetime)
         else:
             raise ValueError(f"Unknown lifecycle_mode: {lifecycle_mode}")
         schedule.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
         transient_args = ["--transient_schedule_file", str(schedule),
              "--transient_persistent_replicas", str(resource["persistent_gpus"]),
              "--transient_replicas_per_node", str(resource["transient_gpus_per_node"]),
-             "--transient_startup_seconds", str(resource["startup_seconds"])]
+             "--transient_startup_seconds", str(resource["startup_seconds"]),
+             "--transient_recovery_mode", (
+                 "ideal_recovery" if lifecycle_mode == "ideal_recovery" else "naive")]
     else:
         raise ValueError("Invalid resource mode")
     args = [

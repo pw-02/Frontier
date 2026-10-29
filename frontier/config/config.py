@@ -169,6 +169,13 @@ class SimulationConfig(ABC):
         default=0.0,
         metadata={"help": "Time from transient node availability to ready routing (seconds)."},
     )
+    transient_recovery_mode: str = field(
+        default="naive",
+        metadata={
+            "help": "Abrupt full replay or zero-time oracle KV recovery.",
+            "choices": ["naive", "ideal_recovery"],
+        },
+    )
     sys_arch: str = field(
         default="co-location",
         metadata={

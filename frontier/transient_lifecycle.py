@@ -142,6 +142,11 @@ class NativeTransientLifecycle:
         self.retries = 0
         self.lost_processed_tokens = 0
         self.stale_event_purges = 0
+        self.recovery_mode = str(getattr(config, "transient_recovery_mode", "naive"))
+        if self.recovery_mode not in ("naive", "ideal_recovery"):
+            raise ValueError(f"Unsupported transient recovery mode: {self.recovery_mode}")
+        self.oracle_restored_requests = 0
+        self.oracle_restored_tokens = 0
         self.reclamation_diagnostics: list[dict] = []
         self.retried_request_ids: set[int] = set()
 
@@ -310,11 +315,24 @@ class NativeTransientLifecycle:
                 # discards all progress, not just the KV cache.
                 original_prompt = int(req._user_facing_num_prefill_tokens)
                 original_output = int(req._user_facing_num_decode_tokens)
-                self.lost_processed_tokens += max(0, req.num_processed_tokens)
+                committed = max(0, int(req.num_processed_tokens))
+                prefill_complete = bool(getattr(req, "is_prefill_complete", False))
+                if self.recovery_mode == "naive":
+                    self.lost_processed_tokens += committed
                 req._num_prefill_tokens = original_prompt
                 req._num_decode_tokens = original_output
                 req._num_processed_tokens = original_prompt
                 req.restart()
+                if self.recovery_mode == "ideal_recovery" and committed:
+                    # Oracle semantics: previously computed KV and generated
+                    # progress are preserved at zero transfer/computation cost.
+                    # The receiving replica must reserve real KV capacity.
+                    req._num_processed_tokens = committed
+                    req._is_prefill_complete = prefill_complete
+                    req._oracle_restore_pending = committed
+                    req._oracle_restored = False
+                    self.oracle_restored_requests += 1
+                    self.oracle_restored_tokens += committed
                 # Native vLLM internal preemption can leave a pending sample
                 # or recompute frontier. Abrupt node reclamation loses both.
                 req._preempted_step = None

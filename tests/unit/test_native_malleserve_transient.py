@@ -84,6 +84,9 @@ def fake_controller(occupied=(), startup=4):
     controller.retries = 0
     controller.lost_processed_tokens = 0
     controller.stale_event_purges = 0
+    controller.recovery_mode = "naive"
+    controller.oracle_restored_requests = 0
+    controller.oracle_restored_tokens = 0
     controller.reclamation_diagnostics = []
     controller.retried_request_ids = set()
     controller._fresh_scheduler = lambda replica_id: controller.scheduler._replicas.__setitem__(
@@ -188,6 +191,18 @@ class ControllerTests(unittest.TestCase):
         c.change(AvailabilityChange(0, "transient-a", "available"))
         with self.assertRaisesRegex(RuntimeError, "simultaneously globally queued"):
             c.change(AvailabilityChange(3, "transient-a", "reclaim"))
+
+    def test_ideal_recovery_preserves_committed_progress(self):
+        r = FakeRequest(55, original_prompt=128, output=16, processed=137)
+        c = fake_controller((r,))
+        c.recovery_mode = "ideal_recovery"
+        c.change(AvailabilityChange(0, "transient-a", "available"))
+        c.change(AvailabilityChange(7, "transient-a", "reclaim"))
+        self.assertEqual(c.retries, 1)
+        self.assertEqual(c.lost_processed_tokens, 0)
+        self.assertEqual(c.oracle_restored_tokens, 137)
+        self.assertEqual(r._oracle_restore_pending, 137)
+        self.assertEqual(r.num_processed_tokens, 137)
 
     def test_allocation_ownership_check_fails_closed(self):
         worker = FakeReplicaScheduler()

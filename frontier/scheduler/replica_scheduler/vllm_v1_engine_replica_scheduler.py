@@ -1138,6 +1138,18 @@ class VLLMv1EngineReplicaScheduler(
                 )
                 break
 
+            # Oracle state transfer is instantaneous but must reserve actual
+            # KV blocks on the destination before admitting the request.
+            oracle_tokens = int(getattr(request, "_oracle_restore_pending", 0))
+            if oracle_tokens > 0:
+                if not self._is_prefix_caching_enabled():
+                    raise RuntimeError("Oracle recovery requires a KV cache manager")
+                if not self._kv_cache_manager.restore_oracle_slots(request, oracle_tokens):
+                    break
+                self._sync_prefix_cache_allocation_state(request)
+                request._oracle_restore_pending = 0
+                request._oracle_restored = True
+
             computed_blocks = None
             prefix_cached_tokens = 0
             prefix_cache_admission: Optional[PrefixCacheAdmission] = None
@@ -1146,7 +1158,9 @@ class VLLMv1EngineReplicaScheduler(
             )
 
             # Calculate number of new tokens to process
-            if self._is_prefix_caching_enabled() and not request.is_decoding:
+            if (self._is_prefix_caching_enabled()
+                    and not request.is_decoding
+                    and not getattr(request, "_oracle_restored", False)):
                 prefix_cache_admission = self._prepare_prefix_cache_admission(
                     request
                 )
