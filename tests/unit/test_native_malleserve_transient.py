@@ -238,6 +238,20 @@ class ControllerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "already owns KV blocks"):
             KVCacheManager.restore_oracle_slots(manager, request, 32)
 
+    def test_ideal_recovery_keeps_both_decode_timestamps(self):
+        r = FakeRequest(590, original_prompt=128, output=22, processed=150)
+        r._prefill_completed_at = 2.0
+        r._first_decode_token_completed_at = 2.0
+        r._decode_first_token_completed_at = 2.1
+        r.is_prefill_complete = True
+        c = fake_controller((r,))
+        c.recovery_mode = "ideal_recovery"
+        c.change(AvailabilityChange(0, "transient-a", "available"))
+        c.change(AvailabilityChange(7, "transient-a", "reclaim"))
+        self.assertEqual(r._first_decode_token_completed_at, 2.0)
+        self.assertEqual(r._decode_first_token_completed_at, 2.1)
+        self.assertEqual(r._prefill_completed_at, 2.0)
+
     def test_allocation_ownership_check_fails_closed(self):
         worker = FakeReplicaScheduler()
         worker._allocation_map = {123: 4}
