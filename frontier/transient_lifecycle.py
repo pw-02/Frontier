@@ -331,6 +331,8 @@ class NativeTransientLifecycle:
                     # The receiving replica must reserve real KV capacity.
                     req._num_processed_tokens = committed
                     req._is_prefill_complete = prefill_complete
+                    req._prefill_completed_at = prefill_completed_at
+                    req._first_decode_token_completed_at = first_decode_completed_at
                     req._oracle_restore_pending = committed
                     req._oracle_restored = False
                     self.oracle_restored_requests += 1
