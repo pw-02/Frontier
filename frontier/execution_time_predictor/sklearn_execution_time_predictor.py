@@ -6469,11 +6469,31 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
             "_late_decode_attn_decode_calibration_scale",
             "late_decode_attn_decode_calibration_scale",
         )
-        if late_decode_scale is not None:
-            return raw_time * late_decode_scale
-        return raw_time * self._get_calibration_scale(
-            "_attn_decode_calibration_scale", "attn_decode_calibration_scale"
+        calibration_branch = (
+            "late_decode_override" if late_decode_scale is not None
+            else "standard_decode"
         )
+        scale = (
+            late_decode_scale if late_decode_scale is not None
+            else self._get_calibration_scale(
+                "_attn_decode_calibration_scale", "attn_decode_calibration_scale"
+            )
+        )
+        # Diagnostic is opt-in; does not change the predicted value or inputs.
+        import os
+        if os.environ.get("FRONTIER_ATTENTION_TRACE_PATH"):
+            from frontier.execution_time_predictor.attention_prediction_trace import (
+                record_decode_attention,
+            )
+            record_decode_attention(
+                path=os.environ["FRONTIER_ATTENTION_TRACE_PATH"],
+                predictor=self, batch=batch, operation=decode_op_name,
+                decode_batch_size=decode_batch_size,
+                rounded_kv_cache_size=decode_avg_kv_cache_size,
+                raw_time_ms=raw_time, scale=scale,
+                branch=calibration_branch,
+            )
+        return raw_time * scale
 
     def _get_attention_prefill_execution_time(self, batch: Batch) -> float:
         prefill_params = self._get_batch_prefill_attention_params(batch)

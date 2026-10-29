@@ -147,11 +147,17 @@ def main():
     parser.add_argument("--polaris-summary", type=Path, required=True)
     parser.add_argument("--output-prefix", type=Path,
                         default=Path("decode_reconcile"))
+    parser.add_argument("--attention-trace", type=Path, default=None,
+                        help="Trace attention features/scales for reconstructed and grid batches")
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument("--tolerance-ms", type=float, default=0.001)
     args = parser.parse_args()
     if args.limit <= 0 or args.tolerance_ms < 0:
         parser.error("Invalid limit/tolerance")
+    import os
+    if args.attention_trace is not None:
+        os.environ["FRONTIER_ATTENTION_TRACE_PATH"] = str(args.attention_trace)
+        os.environ["FRONTIER_ATTENTION_TRACE_ORIGIN"] = "reconstructed"
     predictor, layers = build_predictor(resource="fixed4")
     rows = reconcile(predictor, args.captured, limit=args.limit,
                      tolerance_ms=args.tolerance_ms)
@@ -161,6 +167,8 @@ def main():
     print(f"Captured batch reconstruction: {len(rows)} cases; "
           f"{mismatch} mismatch(es); saved {path}")
     # Same predictor instance, same fixed4 configuration, all 15 grid cases.
+    if args.attention_trace is not None:
+        os.environ["FRONTIER_ATTENTION_TRACE_ORIGIN"] = "synthetic_grid_fixed4"
     grid = probe(predictor, layers, read_polaris(args.polaris_summary))
     grid_path = Path(str(args.output_prefix) + "_grid.csv")
     write_csv(grid_path, grid)
