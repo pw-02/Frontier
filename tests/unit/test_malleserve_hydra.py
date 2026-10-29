@@ -25,14 +25,14 @@ class HydraScenarioTests(unittest.TestCase):
         self.assertEqual(cfg["policy"]["name"], "naive")
         self.assertEqual(cfg["resources"]["mode"], "transient")
         self.assertEqual(cfg["resources"]["persistent_gpus"], 4)
-        self.assertEqual(cfg["experiment"]["name"], "naive_mooncake_r10")
+        self.assertEqual(cfg["experiment"]["name"], "naive_r10")
 
     def test_fixed_resource_groups(self):
         for group, size in (("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
             self.assertEqual(cfg["resources"]["gpus"], size)
             self.assertEqual(cfg["resources"]["mode"], "fixed")
-            self.assertEqual(cfg["experiment"]["name"], f"{group}_mooncake_r10")
+            self.assertEqual(cfg["experiment"]["name"], f"{group}_r10")
 
     def test_composable_overrides(self):
         cfg = loaded(["workload=mooncake_r2", "resources.startup_seconds=0",
