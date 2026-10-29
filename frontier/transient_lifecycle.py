@@ -253,6 +253,10 @@ class NativeTransientLifecycle:
                 req._num_decode_tokens = original_output
                 req._num_processed_tokens = original_prompt
                 req.restart()
+                # Native vLLM internal preemption can leave a pending sample
+                # or recompute frontier. Abrupt node reclamation loses both.
+                req._preempted_step = None
+                req._num_recomputed_tokens = None
                 req.on_enter_waiting_queue(at, ClusterType.MONOLITHIC)
                 self.scheduler.add_request(req)
                 self.retries += 1
