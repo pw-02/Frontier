@@ -7,26 +7,18 @@ This calls Frontier's normal main() in THIS Python process, not a subprocess.
 from __future__ import annotations
 
 import json
-import os
 import sys
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
-from malleserve.scenario import load_scenario, prepare
+from malleserve.scenario import prepare
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = ROOT / "examples/malleserve/transient/scenarios/naive.yaml"
-
-# Optional override for quick experiments without editing a YAML file:
-OVERRIDES = {
-    # "experiment": {"name": "debug_naive"},
-    # "resources": {"startup_seconds": 0},
-}
 
 
-def main(config_path: Path = CONFIG, overrides: dict | None = None) -> None:
-    from malleserve.scenario import merge
-
-    scenario = merge(load_scenario(config_path), overrides or OVERRIDES)
+def main(scenario: dict) -> None:
     args, output, manifest = prepare(scenario)
     print(f"Debugging scenario {scenario['experiment']['name']}, output={output}", flush=True)
     # This is equivalent to python -m frontier.main [args], except the debugger
@@ -53,5 +45,13 @@ def main(config_path: Path = CONFIG, overrides: dict | None = None) -> None:
     print(f"Results: {destination}")
 
 
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def hydra_main(cfg: DictConfig) -> None:
+    # Resolve interpolation before passing a plain dict to the native runner.
+    scenario = OmegaConf.to_container(cfg, resolve=True)
+    assert isinstance(scenario, dict)
+    main(scenario)
+
+
 if __name__ == "__main__":
-    main()
+    hydra_main()
