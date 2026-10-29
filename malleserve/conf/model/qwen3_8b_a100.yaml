@@ -1,0 +1,5 @@
+name: Qwen/Qwen3-8B
+device: a100
+attention_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_calibrated.csv
+linear_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv
+attention_kernel_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_kernel_only.csv
