@@ -1,0 +1,12 @@
+extends: common.yaml
+experiment:
+  name: naive_r10_l60_s40
+  policy: naive
+resources:
+  mode: transient
+  persistent_gpus: 4
+  transient_gpus_per_node: 4
+  candidate_nodes: 2
+  node_lifetime_seconds: 60
+  startup_seconds: 40
+  duration_seconds: 330
