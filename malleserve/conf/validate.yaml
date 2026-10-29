@@ -3,7 +3,7 @@ defaults:
 
 validation:
   polaris: data/malleserve/validation/polaris
-  frontier: outputs/examples/malleserve
+  frontier: outputs/malleserve/runs
   output: outputs/malleserve/validation/fixed_capacity_comparison.csv
 
 hydra:
