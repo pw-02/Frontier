@@ -1,0 +1,12 @@
+# Shared experiment defaults. All policies replay the SAME CSV and use the
+# SAME calibrated Qwen3-8B/A100 Frontier scheduler and predictor.
+experiment:
+  name: baseline
+  policy: fixed
+workload:
+  trace: data/malleserve/mooncake_r10_330s.csv
+resources:
+  mode: fixed
+  gpus: 4
+metrics:
+  slo_seconds: 30
