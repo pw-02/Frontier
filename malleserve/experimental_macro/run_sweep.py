@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[3]
+    root = Path(__file__).resolve().parents[1]
     tools_dir = Path(__file__).resolve().parent
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--dataset", type=Path, required=True)
@@ -40,7 +40,7 @@ def main() -> None:
     for rate in args.rates:
         trace = traces / f"mooncake_r{rate}.csv"
         subprocess.run([
-            sys.executable, str(root / "examples/malleserve/convert_mooncake.py"),
+            sys.executable, str(root / "malleserve/tools/convert_mooncake.py"),
             "--dataset", str(args.dataset), "--rate", str(rate),
             "--warmup-seconds", str(args.warmup_seconds),
             "--measurement-seconds", str(args.measurement_seconds),

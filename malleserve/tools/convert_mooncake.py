@@ -128,7 +128,7 @@ def convert(
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--dataset", type=Path, required=True, help="Prepared Mooncake schema-v1 JSON")
-    p.add_argument("--output", type=Path, default=Path("examples/malleserve/mooncake_r2.csv"))
+    p.add_argument("--output", type=Path, default=Path("malleserve/tools/mooncake_r2.csv"))
     p.add_argument("--rate", type=int, default=2, help="Integer arrivals per second, as in k6")
     p.add_argument("--warmup-seconds", type=int, default=30)
     p.add_argument("--measurement-seconds", type=int, default=300)

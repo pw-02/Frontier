@@ -7,7 +7,7 @@ export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 export WANDB_DISABLED=true
 export VIDUR_DISABLE_WANDB=1
 
-TRACE_FILE="${1:?Usage: bash examples/malleserve/transient/run_native_transient.sh TRACE_CSV SCHEDULE_JSONL [run_id]}"
+TRACE_FILE="${1:?Usage: bash malleserve/tools/run_native_transient.sh TRACE_CSV SCHEDULE_JSONL [run_id]}"
 AVAILABILITY_FILE="${2:?Missing availability JSONL}"
 RUN_ID="${3:-native_transient}"
 MANIFEST="${TRACE_FILE%.csv}.manifest.json"
@@ -36,7 +36,7 @@ else
   echo "Unsupported RESOURCE_MODE: $RESOURCE_MODE" >&2; exit 2
 fi
 TRACE_MAX_TOKENS="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["required_frontier_max_tokens"])' "$MANIFEST")"
-OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/examples/malleserve/$RUN_ID}"
+OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/malleserve/tools/$RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 
 echo "Native Frontier transient simulation"
@@ -81,7 +81,7 @@ python -m frontier.main \
   --no-metrics_config_enable_chrome_trace \
   --no-metrics_config_write_json_trace
 
-python examples/malleserve/analyze_mooncake.py \
+python malleserve/tools/analyze_mooncake.py \
   --manifest "$MANIFEST" --metrics-dir "$OUTPUT_DIR" --slo-seconds "${SLO_SECONDS:-30}"
 
 echo "Native transient lifecycle diagnostics:"

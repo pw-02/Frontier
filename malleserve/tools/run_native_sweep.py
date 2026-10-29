@@ -15,7 +15,7 @@ import os
 import subprocess
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[1]
 HERE = Path(__file__).resolve().parent
 
 
@@ -72,7 +72,7 @@ def main() -> None:
     p.add_argument("--startups", type=float, nargs="+", default=[0, 20, 40, 80])
     p.add_argument("--duration-seconds", type=float, default=330.0)
     p.add_argument("--slo-seconds", type=float, default=30.0)
-    p.add_argument("--output-dir", type=Path, default=ROOT / "outputs/examples/malleserve/native_sweep")
+    p.add_argument("--output-dir", type=Path, default=ROOT / "outputs/malleserve/tools/native_sweep")
     p.add_argument("--dry-run", action="store_true")
     a = p.parse_args()
     positive_finite([float(x) for x in a.rates], "rates")

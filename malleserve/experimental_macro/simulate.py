@@ -540,7 +540,7 @@ def run_scenarios(
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--trace", type=Path, required=True,
-                   help="CSV from examples/malleserve/convert_mooncake.py")
+                   help="CSV from malleserve/tools/convert_mooncake.py")
     p.add_argument("--service-profile", type=Path, required=True,
                    help="JSON from transient/service_profile.py")
     p.add_argument("--output-dir", type=Path, required=True)

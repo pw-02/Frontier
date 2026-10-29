@@ -7,7 +7,7 @@ export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 export WANDB_DISABLED=true
 export VIDUR_DISABLE_WANDB=1
 
-TRACE_FILE="${1:?Usage: bash examples/malleserve/run_mooncake.sh trace.csv [run_id]}"
+TRACE_FILE="${1:?Usage: bash malleserve/tools/run_mooncake.sh trace.csv [run_id]}"
 RUN_ID="${2:-mooncake_smoke}"
 MANIFEST="${TRACE_FILE%.csv}.manifest.json"
 if [[ ! -f "$TRACE_FILE" || ! -f "$MANIFEST" ]]; then
@@ -15,7 +15,7 @@ if [[ ! -f "$TRACE_FILE" || ! -f "$MANIFEST" ]]; then
   exit 2
 fi
 TRACE_MAX_TOKENS="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["required_frontier_max_tokens"])' "$MANIFEST")"
-OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/examples/malleserve/$RUN_ID}"
+OUTPUT_DIR="${METRICS_OUTPUT_DIR:-$ROOT/outputs/malleserve/tools/$RUN_ID}"
 mkdir -p "$OUTPUT_DIR"
 echo "Frontier trace: $TRACE_FILE"
 echo "Metrics root: $OUTPUT_DIR"
@@ -54,5 +54,5 @@ python -m frontier.main \
   --no-metrics_config_enable_chrome_trace \
   --no-metrics_config_write_json_trace
 
-python examples/malleserve/analyze_mooncake.py \
+python malleserve/tools/analyze_mooncake.py \
   --manifest "$MANIFEST" --metrics-dir "$OUTPUT_DIR" --slo-seconds "${SLO_SECONDS:-30}"

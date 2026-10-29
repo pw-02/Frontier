@@ -8,7 +8,7 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
-SOURCE_RUNNER="${SOURCE_RUNNER:-examples/malleserve/run_mooncake_calibrated_rr_piecewise_2048.sh}"
+SOURCE_RUNNER="${SOURCE_RUNNER:-malleserve/tools/run_mooncake_calibrated_rr_piecewise_2048.sh}"
 DATASET="${DATASET:-data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json}"
 KV_BLOCKS="${KV_BLOCKS:-8115}"  # FlashAttention 2 Polaris baseline; not FlashInfer diagnostic
 
@@ -22,7 +22,7 @@ for rate in 2 4 6 8 10 12; do
   file="data/malleserve/mooncake_r${rate}_330s.csv"
   manifest="data/malleserve/mooncake_r${rate}_330s.manifest.json"
   if [[ ! -f "$file" || ! -f "$manifest" ]]; then
-    python examples/malleserve/convert_mooncake.py \
+    python malleserve/tools/convert_mooncake.py \
       --dataset "$DATASET" \
       --rate "$rate" \
       --warmup-seconds 30 --measurement-seconds 300 \
@@ -32,13 +32,13 @@ for rate in 2 4 6 8 10 12; do
 done
 
 # The calibrated runner resolves repo ROOT relative to its script's location.
-# Write temporary siblings in examples/malleserve/, not under /tmp.
+# Write temporary siblings in malleserve/tools/, not under /tmp.
 GENERATED=()
 cleanup() { for file in "${GENERATED[@]}"; do rm -f "$file"; done; }
 trap cleanup EXIT
 
 for workers in 1 2 4 6 8; do
-  generated="$(mktemp "examples/malleserve/.frontier_validation_${workers}.XXXXXX.sh")"
+  generated="$(mktemp "malleserve/tools/.frontier_validation_${workers}.XXXXXX.sh")"
   GENERATED+=("$generated")
   python - "$SOURCE_RUNNER" "$generated" "$workers" "$KV_BLOCKS" <<'PY'
 import pathlib, re, sys
@@ -68,7 +68,7 @@ PY
 
     run_id="validation_w${workers}_r${rate}"
     trace="data/malleserve/mooncake_r${rate}_330s.csv"
-    output="outputs/examples/malleserve/$run_id"
+    output="outputs/malleserve/tools/$run_id"
     if [[ -d "$output" ]] && find "$output" -name malleserve_summary.json -print -quit | grep -q .; then
       echo "SKIP completed: $run_id"
       continue
