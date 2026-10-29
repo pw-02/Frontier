@@ -8,7 +8,7 @@ from pathlib import Path
 
 def record_decode_attention(*, path, predictor, batch, operation,
                             decode_batch_size, rounded_kv_cache_size,
-                            raw_time_ms, scale, branch):
+                            raw_time_ms, scale, branch, lookup=None):
     requests = []
     for request, is_decoding, scheduled_context in zip(
             batch.requests, batch.request_is_decoding, batch.num_context_tokens):
@@ -31,6 +31,7 @@ def record_decode_attention(*, path, predictor, batch, operation,
         "batch_num_tokens": list(batch.num_tokens),
         "num_prefill_tokens": int(batch.num_prefill_tokens),
         "operation": operation,
+        "lookup": lookup,
         "feature_batch_size": int(decode_batch_size),
         "feature_rounded_kv_cache_size": int(rounded_kv_cache_size),
         "kv_cache_prediction_granularity": int(

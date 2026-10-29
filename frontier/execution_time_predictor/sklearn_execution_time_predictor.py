@@ -4481,6 +4481,21 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
         combination that was not materialized.  The runtime cache stores only
         validated model results; measured rows remain read-only.
         """
+        def trace_lookup(source, value, model):
+            import os
+            if model_name == "attn_decode" and os.environ.get("FRONTIER_ATTENTION_TRACE_PATH"):
+                self._attention_last_lookup_trace = {
+                    "prediction_source": source,
+                    "prediction_value_ms_per_layer": float(value),
+                    "active_measurement_type": str(getattr(self, "_active_measurement_type", None)),
+                    "measurement_family": str(self._measurement_family_name(self._active_measurement_type)),
+                    "trained_model_class": type(model).__module__ + "." + type(model).__qualname__ if model is not None else None,
+                    "trained_model_params": repr(model.get_params(deep=False))[:2000] if model is not None and hasattr(model, "get_params") else None,
+                    "prediction_cache_size": len(self._predictions.get(model_name, {})),
+                    "training_file_paths": repr(getattr(self, "_training_file_paths", None))[:2000],
+                }
+            return value
+
         model_info = self._predictions.get(model_name)
         if model_info is None:
             raise ValueError(f"Model {model_name} not found in predictions")
@@ -4603,7 +4618,7 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                     f"Prediction exact lookup value for {model_name} must be finite "
                     "and non-negative"
                 )
-            return normalized_exact_value
+            return trace_lookup("exact_measured_or_finite_table", normalized_exact_value, model)
 
         runtime_cache_store = getattr(self, "_runtime_cache", None)
         if runtime_cache_store is None:
@@ -4630,7 +4645,7 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                     f"Prediction runtime cache value for {model_name} must be finite "
                     "and non-negative"
                 )
-            return normalized_cached_value
+            return trace_lookup("runtime_cache", normalized_cached_value, model)
 
         if model is None:
             raise ValueError(
@@ -4671,7 +4686,7 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
             )
 
         runtime_cache[feature_key] = prediction
-        return prediction
+        return trace_lookup("trained_model_fallback", prediction, model)
 
     def _get_on_demand_prediction(
         self, model_name: str, features: Dict[str, float]
@@ -6492,6 +6507,7 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                 rounded_kv_cache_size=decode_avg_kv_cache_size,
                 raw_time_ms=raw_time, scale=scale,
                 branch=calibration_branch,
+                lookup=getattr(self, "_attention_last_lookup_trace", None),
             )
         return raw_time * scale
 
