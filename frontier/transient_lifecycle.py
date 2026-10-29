@@ -89,6 +89,15 @@ class NativeTransientLifecycle:
         # The current implementation explicitly supports vLLM v1 engine scheduling,
         # not Orca or speculative/multiround state machines.
         self.scheduler = global_scheduler.get_cluster_scheduler(ClusterType.MONOLITHIC)
+        from frontier.scheduler.cluster_scheduler.round_robin_cluster_scheduler import (
+            RoundRobinClusterScheduler,
+        )
+        if type(self.scheduler) is not RoundRobinClusterScheduler:
+            raise ValueError("Native transient lifecycle requires round_robin cluster scheduler")
+        replica_config = config.cluster_config.replica_config
+        if getattr(getattr(replica_config, "speculative_decoding_config", None),
+                   "enabled", False):
+            raise ValueError("Native transient lifecycle does not support speculative decoding")
         self.cluster = self.scheduler._cluster
         self.ids = list(self.cluster.replicas)
         if self.scheduler._replica_dp_size != 1:
