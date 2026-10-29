@@ -6,7 +6,7 @@
 # Optional: SOURCE_RUNNER=..., DATASET=..., KV_BLOCKS=8115
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 SOURCE_RUNNER="${SOURCE_RUNNER:-malleserve/tools/run_mooncake_calibrated_rr_piecewise_2048.sh}"
 DATASET="${DATASET:-data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json}"

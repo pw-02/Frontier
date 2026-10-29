@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Native Frontier vLLM continuous-batching transient-worker simulation.
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 export WANDB_DISABLED=true
