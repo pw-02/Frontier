@@ -1,6 +1,6 @@
 """Hydra entry point for Polaris-versus-Frontier validation.
 
-python -m malleserve.validate validation.polaris=/path/to/fixed-workers-4-r10.zip
+python -m malleserve.validate validation.polaris=data/malleserve/validation/polaris_summary.csv
 """
 from pathlib import Path
 

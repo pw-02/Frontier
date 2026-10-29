@@ -63,35 +63,43 @@ def _new_comparison_row(workers, rate, sim, reference):
     }
 
 
+def find_frontier(root: Path, workers: int, rate: int):
+    names = [f"fixed{workers}_mooncake_r{rate}", f"validation_w{workers}_r{rate}"]
+    matches = [path for name in names
+               for path in root.glob(f"{name}/**/malleserve_summary.json")]
+    if len(matches) > 1:
+        raise ValueError(f"Multiple Frontier summaries for GPUs={workers}, RPS={rate}")
+    return json.loads(matches[0].read_text(encoding="utf-8")) if matches else None
+
+
 def compare(polaris: Path, frontier: Path, output: Path) -> list[dict]:
     rows = []
     if not polaris.is_file() or polaris.suffix.lower() != ".csv":
         raise ValueError("Polaris input must be a summary CSV file")
-    if True:
-        for workers, rate, record in _from_csv(polaris):
-            sim = find_frontier(frontier, workers, rate)
-            rows.append(_new_comparison_row(workers, rate, sim, {
-                "polaris_source": str(polaris),
-                "polaris_run_id": record["run_id"],
-                "polaris_run_dir": record.get("run_dir", ""),
-                "polaris_validity_status": record["validity_status"],
-                "polaris_valid_load": _valid_summary(record),
-                "polaris_submitted_pct": _optional_number(record["submission_pct"]),
-                "polaris_expected_measured": _optional_number(record["expected_measured"]),
-                "polaris_measured_requests": _optional_number(record["submitted_measured"]),
-                "polaris_completed_ok": _optional_number(record["completed_ok"]),
-                "polaris_failed_requests": _optional_number(record["failed"]),
-                "polaris_dropped_iterations": _optional_number(record.get("dropped_iterations")),
-                "polaris_latency_mean_s": _optional_number(record["latency_mean_s"]),
-                "polaris_latency_p50_s": _optional_number(record["latency_p50_s"]),
-                "latency_p95_s": _optional_number(record["latency_p95_s"]),
-                "polaris_latency_p99_s": _optional_number(record["latency_p99_s"]),
-                "polaris_slo_attainment_pct": _optional_number(record["slo_attainment_pct"]),
-                "polaris_slo_goodput_rps": _optional_number(record["slo_goodput_rps"]),
-                "polaris_completion_in_window_rps": _optional_number(record["completion_in_window_rps_est"]),
-                "polaris_backlog_est": _optional_number(record["measured_outstanding_at_end_est"]),
-                "polaris_prefix_cache_hit_pct": _optional_number(record.get("prefix_cache_hit_pct")),
-            }))
+    for workers, rate, record in _from_csv(polaris):
+        sim = find_frontier(frontier, workers, rate)
+        rows.append(_new_comparison_row(workers, rate, sim, {
+            "polaris_source": str(polaris),
+            "polaris_run_id": record["run_id"],
+            "polaris_run_dir": record.get("run_dir", ""),
+            "polaris_validity_status": record["validity_status"],
+            "polaris_valid_load": _valid_summary(record),
+            "polaris_submitted_pct": _optional_number(record["submission_pct"]),
+            "polaris_expected_measured": _optional_number(record["expected_measured"]),
+            "polaris_measured_requests": _optional_number(record["submitted_measured"]),
+            "polaris_completed_ok": _optional_number(record["completed_ok"]),
+            "polaris_failed_requests": _optional_number(record["failed"]),
+            "polaris_dropped_iterations": _optional_number(record.get("dropped_iterations")),
+            "polaris_latency_mean_s": _optional_number(record["latency_mean_s"]),
+            "polaris_latency_p50_s": _optional_number(record["latency_p50_s"]),
+            "latency_p95_s": _optional_number(record["latency_p95_s"]),
+            "polaris_latency_p99_s": _optional_number(record["latency_p99_s"]),
+            "polaris_slo_attainment_pct": _optional_number(record["slo_attainment_pct"]),
+            "polaris_slo_goodput_rps": _optional_number(record["slo_goodput_rps"]),
+            "polaris_completion_in_window_rps": _optional_number(record["completion_in_window_rps_est"]),
+            "polaris_backlog_est": _optional_number(record["measured_outstanding_at_end_est"]),
+            "polaris_prefix_cache_hit_pct": _optional_number(record.get("prefix_cache_hit_pct")),
+        }))
     if not rows:
         raise ValueError(f"No Polaris reference rows found in {polaris}")
     rows.sort(key=lambda x: (x["workers"], x["offered_rps"], str(x.get("polaris_run_id", ""))))

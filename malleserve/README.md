@@ -5,8 +5,7 @@ All MalleServe-specific code is now organized here, not under `examples/`.
 - `conf/` — canonical Hydra defaults and config groups (model, scheduler, workload, resources, policy)
 - `debug_run.py` — single-process step-through Frontier runner
 - `scenario.py` — maps composed Hydra config to Frontier's native CLI dataclasses
-- `tools/` — Mooncake trace conversion, calibration, validation and native transient batch scripts
-- `experimental_macro/` — historical processor-sharing prototype; **not** the native simulator and not intended for research capacity claims
+- `tools/` — Mooncake trace conversion, analysis and resource schedule generator
 
 ## Start and debug
 
@@ -40,3 +39,12 @@ The CSV captures fixed-rate arrival times, request prompt/output sizes and prefi
 Run the Hydra config checks with `python -m unittest discover -s tests/unit -p test_malleserve_hydra.py -v`.
 
 The legacy macro approximation is retained for historical reproducibility, not native performance estimation. The integration has not yet undergone a full end-to-end execution and fixed-capacity parity check in your Frontier environment.
+
+## Polaris validation (CSV only)
+
+```bash
+python -m malleserve.validate validation.polaris=data/malleserve/validation/polaris_summary.csv
+```
+
+The only supported experiment execution is `python -m malleserve.debug_run` (including Hydra `-m`).
+The only supported validation reference is the consolidated Polaris summary CSV. See `VALIDATION.md`.
