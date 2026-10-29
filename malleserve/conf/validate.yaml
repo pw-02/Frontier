@@ -1,0 +1,13 @@
+defaults:
+  - _self_
+
+validation:
+  polaris: data/malleserve/validation/polaris
+  frontier: outputs/examples/malleserve
+  output: outputs/malleserve/validation/fixed_capacity_comparison.csv
+
+hydra:
+  run:
+    dir: .
+  job:
+    chdir: false
