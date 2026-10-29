@@ -242,7 +242,9 @@ class KVCacheManager:
             return False
         allocation = self.block_pool.get_new_blocks(required)
         self.req_to_blocks[request.id].extend(allocation.blocks)
-        self.num_cached_blocks[request.id] = 0
+        # Restored full blocks already contain their KV data. Do not
+        # retroactively hash/cache them or count them as prefix-cache hits.
+        self.num_cached_blocks[request.id] = processed_tokens // self.block_size
         return True
 
     def free(self, request: Request) -> None:
