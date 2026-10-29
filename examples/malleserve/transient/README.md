@@ -150,6 +150,39 @@ windows that expire before a worker finishes initializing.
 **Availability is an exogenous trace**: unlike ordinary cloud
 autoscaling, the serving policy cannot extend a GPU's lifetime.
 
+## Plot outputs and test against native Frontier
+
+Plot the four-policy comparison and request-arrival-window timelines:
+
+    python examples/malleserve/transient/plot.py \
+      --scenario outputs/examples/malleserve/transient_r10_l60
+
+Plot the offered-rate sweep at each resource lifetime:
+
+    python examples/malleserve/transient/plot.py \
+      --sweep outputs/examples/malleserve/transient_sweep
+
+Requires Matplotlib. The plots prominently say macro model.
+
+**Mandatory validation gate before relying on numerical predictions:** compare
+the macro's fixed-worker controls with the exact same native Frontier trace:
+
+    NATIVE4=$(find outputs/examples/malleserve/validation_w4_r10 \
+      -name malleserve_summary.json -print -quit)
+    NATIVE8=$(find outputs/examples/malleserve/validation_w8_r10 \
+      -name malleserve_summary.json -print -quit)
+
+    python examples/malleserve/transient/validate_baselines.py \
+      --macro-scenario outputs/examples/malleserve/transient_r10_l60 \
+      --native-fixed-4 "$NATIVE4" \
+      --native-fixed-8 "$NATIVE8" \
+      --max-relative-error 0.20
+
+The gate returns nonzero on material differences in fixed-worker p95/p99
+or SLO goodput. **Failure means the macro model cannot be used for
+quantitative transient claims.** Passing is only a prerequisite, not
+validation of the native transient lifecycle.
+
 ## 6. Test the state machine
 
     python -m unittest discover -s tests/unit \
