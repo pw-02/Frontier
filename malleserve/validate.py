@@ -19,7 +19,7 @@ def main(cfg: DictConfig) -> None:
         print(
             f"GPUs={row['workers']}, RPS={row['offered_rps']}, "
             f"valid_load={row['polaris_valid_load']}, "
-            f"Polaris p95={row['polaris_p95_client_latency_s']:.3f}s, "
+            f"Polaris p95={row.get('latency_p95_s')}s, "
             f"Frontier p95={row['frontier_p95_engine_latency_s']}"
         )
 
