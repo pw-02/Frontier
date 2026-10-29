@@ -28,13 +28,16 @@ def load_scenario(path: Path) -> dict:
 
 
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
-    from examples.malleserve.transient.run_native_scenario import load_scenario
     from examples.malleserve.transient.generate_native_schedule import generate
+    if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "naive"):
+        raise ValueError("Policy and resource mode mismatch")
     # Scenario already validated on file load, but overrides may be applied.
     name = config["experiment"]["name"]
     if not isinstance(name, str) or not name or any(not(c.isalnum() or c in "-_") for c in name):
         raise ValueError("Invalid scenario name")
     resource = config["resources"]
+    model = config["model"]
+    sched = config["scheduler"]
     trace = Path(config["workload"]["trace"])
     if not trace.is_absolute():
         trace = ROOT / trace
@@ -66,31 +69,31 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         "--sys_arch", "co-location",
         "--cc_backend_config_type", "analytical",
         "--cluster_config_num_replicas", str(count),
-        "--cluster_scheduler_config_type", "round_robin",
-        "--replica_config_model_name", "Qwen/Qwen3-8B",
-        "--replica_config_device", "a100",
+        "--cluster_scheduler_config_type", str(sched["cluster"]),
+        "--replica_config_model_name", str(model["name"]),
+        "--replica_config_device", str(model["device"]),
         "--replica_config_attn_tensor_parallel_size", "1",
         "--replica_config_num_pipeline_stages", "1",
-        "--replica_scheduler_config_type", "vllm_v1",
-        "--decode_cuda_graph_mode", "piecewise",
-        "--vllm_v1_scheduler_config_max_model_len", "17000",
-        "--vllm_v1_scheduler_config_max_tokens_in_batch", "2048",
-        "--vllm_v1_scheduler_config_block_size", "16",
+        "--replica_scheduler_config_type", str(sched["name"]),
+        "--decode_cuda_graph_mode", str(sched["decode_cuda_graph_mode"]),
+        "--vllm_v1_scheduler_config_max_model_len", str(sched["max_model_len"]),
+        "--vllm_v1_scheduler_config_max_tokens_in_batch", str(sched["max_tokens_in_batch"]),
+        "--vllm_v1_scheduler_config_block_size", str(sched["block_size"]),
         "--vllm_v1_scheduler_config_num_blocks_mode", "explicit",
-        "--vllm_v1_scheduler_config_num_blocks", "8192",
-        "--vllm_v1_scheduler_config_enable_prefix_caching",
-        "--vllm_v1_scheduler_config_enable_chunked_prefill",
+        "--vllm_v1_scheduler_config_num_blocks", str(sched["num_blocks"]),
+        ("--vllm_v1_scheduler_config_enable_prefix_caching" if sched["enable_prefix_caching"] else "--no-vllm_v1_scheduler_config_enable_prefix_caching"),
+        ("--vllm_v1_scheduler_config_enable_chunked_prefill" if sched["enable_chunked_prefill"] else "--no-vllm_v1_scheduler_config_enable_chunked_prefill"),
         "--request_generator_config_type", "trace_replay",
         "--trace_request_generator_config_trace_file", str(trace),
         "--trace_request_generator_config_max_tokens", str(max_tokens),
         *transient_args,
         "--no-random_forrest_execution_time_predictor_config_enable_dummy_mode",
         "--random_forrest_execution_time_predictor_config_atten_input_file",
-        "data/profiling/compute/a100/Qwen/Qwen3-8B/attention_calibrated.csv",
+        str(model["attention_profile"]),
         "--random_forrest_execution_time_predictor_config_linear_op_kernel_only_input_file",
-        "data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv",
+        str(model["linear_profile"]),
         "--random_forrest_execution_time_predictor_config_atten_kernel_only_input_file",
-        "data/profiling/compute/a100/Qwen/Qwen3-8B/attention_kernel_only.csv",
+        str(model["attention_kernel_profile"]),
         "--metrics_config_output_dir", str(out),
         "--metrics_config_run_id", name,
         "--metrics_config_write_metrics",
