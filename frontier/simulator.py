@@ -1232,7 +1232,7 @@ class Simulator:
                     "purged_stale_gpu_events": self._transient_lifecycle.stale_event_purges,
                     "events": self._transient_lifecycle.lifecycle_records,
                 }, handle, indent=2)
-                handle.write("\\n")
+                handle.write("\n")
         logger.info("Starting metrics output...")
         logger.info(f"Output directory: {self._config.metrics_config.output_dir}")
         logger.info(f"write_metrics={self._config.metrics_config.write_metrics}")
