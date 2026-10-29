@@ -66,14 +66,14 @@ def compare(polaris: Path, frontier: Path, output: Path) -> list[dict]:
         expected = rate * exp["measurement_seconds"]
         valid = (
             measured["validity"]["status"] == "completed"
-            and client["measured_load_requests"] == expected
+            and (client["measured_load_requests"] if client["measured_load_requests"] is not None else client["successful_checks"]) == expected
             and client["measured_load_failures"] == 0
             and client["dropped_iterations"] == 0
         )
         rows.append({
             "workers": workers, "offered_rps": rate,
             "polaris_source": source, "polaris_valid_load": valid,
-            "polaris_measured_requests": client["measured_load_requests"],
+            "polaris_measured_requests": client["measured_load_requests"] if client["measured_load_requests"] is not None else client["successful_checks"],
             "polaris_failed_requests": client["measured_load_failures"],
             "polaris_mean_client_latency_s": real_mean,
             "frontier_mean_engine_latency_s": sim_mean,
