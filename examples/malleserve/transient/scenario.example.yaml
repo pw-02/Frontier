@@ -1,20 +1,5 @@
-# Edit this file to run a different native Frontier scenario.
-# Model/scheduler/predictor remain the calibrated Qwen3-8B/A100 defaults
-# in examples/malleserve/transient/run_native_transient.sh.
+# Backward-compatible entry point. Extend the preset you want to experiment with.
+# Options: scenarios/fixed4.yaml, scenarios/fixed8.yaml, scenarios/naive.yaml
+extends: scenarios/naive.yaml
 experiment:
-  name: naive_r10_l60_s40
-  policy: naive
-
-workload:
-  trace: data/malleserve/mooncake_r10_330s.csv
-
-resources:
-  persistent_gpus: 4
-  transient_gpus_per_node: 4
-  candidate_nodes: 2
-  node_lifetime_seconds: 60
-  startup_seconds: 40
-  duration_seconds: 330
-
-metrics:
-  slo_seconds: 30
+  name: naive_r10_l60_s40_example
