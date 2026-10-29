@@ -22,16 +22,11 @@ def merge(base: dict, override: dict) -> dict:
     return result
 
 
-def load_scenario(path: Path) -> dict:
-    from examples.malleserve.transient.run_native_scenario import load_scenario as validate
-    return validate(path)
-
-
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
     from malleserve.tools.generate_native_schedule import generate
     if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "naive"):
         raise ValueError("Policy and resource mode mismatch")
-    # Scenario already validated on file load, but overrides may be applied.
+    # Native Frontier handles final validation of its own CLI dataclasses.
     name = config["experiment"]["name"]
     if not isinstance(name, str) or not name or any(not(c.isalnum() or c in "-_") for c in name):
         raise ValueError("Invalid scenario name")
