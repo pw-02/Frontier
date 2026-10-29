@@ -1,5 +1,0 @@
-# Backward-compatible entry point. Extend the preset you want to experiment with.
-# Options: scenarios/fixed4.yaml, scenarios/fixed8.yaml, scenarios/naive.yaml
-extends: scenarios/naive.yaml
-experiment:
-  name: naive_r10_l60_s40_example

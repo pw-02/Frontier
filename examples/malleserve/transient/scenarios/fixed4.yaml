@@ -1,3 +1,0 @@
-extends: common.yaml
-experiment:
-  name: fixed4_r10
