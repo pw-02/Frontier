@@ -88,6 +88,15 @@ def reconcile(predictor, captures, *, limit=30, tolerance_ms=0.001):
             contexts = item["context_tokens"]
             batch = build_batch(contexts, num_tokens=item["num_tokens"],
                                 decoding=item["request_is_decoding"])
+            metadata = item.get("decode_cuda_graph_metadata")
+            if metadata is None:
+                raise ValueError(
+                    "Capture lacks scheduler CUDA-graph metadata. Re-run the "
+                    "FRONTIER_DECODE_REPLAY_PATH capture with updated Frontier; "
+                    "the older v2 JSONL cannot reproduce the live measurement family."
+                )
+            from frontier.entities.batch import DecodeCudaGraphMetadata
+            batch.decode_cuda_graph_metadata = DecodeCudaGraphMetadata(**metadata)
             family = select_live_decode_family(predictor, batch)
             current = predictor.predict_stage_execution_time(
                 batch, stage_id=int(item["stage_id"]),

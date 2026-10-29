@@ -49,6 +49,10 @@ def maybe_probe(batch, original, predictor, stage_id, cluster_type, num_layers, 
         "request_is_decoding": decoding,
         "num_tokens": tokens,
         "num_layers": num_layers,
+        "decode_cuda_graph_metadata": (
+            vars(batch.decode_cuda_graph_metadata).copy()
+            if batch.decode_cuda_graph_metadata is not None else None
+        ),
         "layer_id": layer_id,
         "stage_id": stage_id,
         "original": _timing(original),

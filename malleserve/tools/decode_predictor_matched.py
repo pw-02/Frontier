@@ -32,6 +32,16 @@ def probe(predictor, model_layers: int, polaris: dict, before_predict=None):
                           num_tokens=[1] * size, is_moe=False,
                           num_context_tokens=[context] * size,
                           request_is_decoding=[True] * size)
+            # Homogeneous, pure-decode synthetic probes represent a captured
+            # CUDA-graph step; annotate this assumption explicitly. Real captured
+            # metadata is used separately by decode_predictor_reconcile.
+            from frontier.entities.batch import DecodeCudaGraphMetadata
+            batch.decode_cuda_graph_metadata = DecodeCudaGraphMetadata(
+                config_mode="FULL", runtime_mode="FULL", capture_hit=True,
+                is_mixed_batch=False, original_total_tokens=size,
+                padded_total_tokens=size, original_decode_batch_size=size,
+                padded_decode_batch_size=size,
+            )
             family = before_predict(batch) if before_predict is not None else (
                 predictor._measurement_family_name(
                     predictor._activate_measurement_type_for_batch(batch)
