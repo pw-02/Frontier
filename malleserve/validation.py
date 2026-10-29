@@ -9,9 +9,6 @@ import csv
 import json
 from pathlib import Path
 
-NAME = re.compile(r"fixed-workers-(\d+)-r(\d+)")
-
-
 def _optional_number(value):
     if value is None or str(value).strip() == "":
         return None
