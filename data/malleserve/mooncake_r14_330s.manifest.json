@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "source_workload": "mooncake_toolagent_qwen3_8b_n12000",
+  "rate_per_second": 14,
+  "warmup_seconds": 30,
+  "measurement_seconds": 300,
+  "warmup_count": 420,
+  "measurement_count": 4200,
+  "total_requests": 4620,
+  "source_block_size": 512,
+  "frontier_block_size": 16,
+  "max_output_tokens": 128,
+  "required_frontier_max_tokens": 16446,
+  "dataset_index_gap_after_warmup": 2,
+  "arrival_model": "constant_rate_not_original_trace_timestamps",
+  "notes": "Prefix hashes describe possible equality, not observed GPU KV hits.",
+  "trace_csv": "/home/pwatters/projects/Frontier/data/malleserve/mooncake_r14_330s.csv",
+  "prepared_dataset": "/home/pwatters/projects/Frontier/data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json"
+}

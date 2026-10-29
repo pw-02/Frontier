@@ -259,3 +259,5 @@ worktreess/
 skills/*/site.local.md
 data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json
 data/malleserve/mooncake_r2_smoke.csv
+
+validation/plots

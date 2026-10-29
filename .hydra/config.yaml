@@ -1,0 +1,4 @@
+validation:
+  polaris: data/malleserve/validation/polaris_summary.csv
+  frontier: outputs/malleserve/runs
+  output: outputs/malleserve/validation/fixed_capacity_comparison.csv
