@@ -152,6 +152,23 @@ class SimulationConfig(ABC):
             ),
         },
     )
+    # Native event-driven transient worker simulation. Inert by default.
+    transient_schedule_file: Optional[str] = field(
+        default=None,
+        metadata={"help": "JSONL transient node availability; opt-in native monolithic vLLM simulation."},
+    )
+    transient_persistent_replicas: int = field(
+        default=4,
+        metadata={"help": "Number of permanently ready replicas when a transient schedule is enabled."},
+    )
+    transient_replicas_per_node: int = field(
+        default=4,
+        metadata={"help": "Number of one-GPU replicas in each transient candidate node."},
+    )
+    transient_startup_seconds: float = field(
+        default=0.0,
+        metadata={"help": "Time from transient node availability to ready routing (seconds)."},
+    )
     sys_arch: str = field(
         default="co-location",
         metadata={
