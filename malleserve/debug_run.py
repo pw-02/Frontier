@@ -7,6 +7,7 @@ This calls Frontier's normal main() in THIS Python process, not a subprocess.
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 
 import hydra
@@ -40,8 +41,21 @@ def main(scenario: dict) -> None:
                    json.loads(manifest.read_text(encoding="utf-8")),
                    float(scenario["metrics"]["slo_seconds"]))
     data.update(read_request_csv_metrics(metrics_dir / "request_metrics.csv"))
-    destination = metrics_dir / "malleserve_summary.json"
-    destination.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    # Frontier internally writes <root>/<model>/online_serving/<run-id>.
+    # Keep its native behavior intact, then expose one flat per-run folder.
+    if metrics_dir != output:
+        for item in metrics_dir.iterdir():
+            target = output / item.name
+            if target.exists():
+                raise FileExistsError(f"Output collision during flatten: {target}")
+            shutil.move(str(item), str(target))
+        # Remove now-empty taxonomy directories only.
+        parent = metrics_dir
+        while parent != output:
+            parent.rmdir()
+            parent = parent.parent
+    destination = output / "malleserve_summary.json"
+    destination.write_text(json.dumps(data, indent=2) + "\\n", encoding="utf-8")
     print(f"Results: {destination}")
 
 
