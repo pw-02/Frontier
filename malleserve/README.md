@@ -48,3 +48,24 @@ python -m malleserve.validate validation.polaris=data/malleserve/validation/pola
 
 The only supported experiment execution is `python -m malleserve.debug_run` (including Hydra `-m`).
 The only supported validation reference is the consolidated Polaris summary CSV. See `VALIDATION.md`.
+
+## Full fixed-capacity sweep
+
+The sole experiment runner is Hydra's `malleserve.debug_run`. From the Frontier repo root:
+
+```bash
+python -m malleserve.debug_run -m \\
+  resources=fixed1,fixed2,fixed4,fixed6,fixed8 \\
+  policy=fixed \\
+  workload=mooncake_r2,mooncake_r4,mooncake_r6,mooncake_r8,mooncake_r10,mooncake_r12,mooncake_r14,mooncake_r16
+```
+
+This runs a Cartesian grid of **40** Frontier simulations (five worker counts by eight rates), including cells the original Polaris sweep did not measure. Each writes to a concise directory such as `outputs/malleserve/runs/fixed4_r10/`, containing `malleserve_summary.json`, `request_metrics.csv`, etc. Frontier's internal taxonomy is flattened **after** the run. Hydra's own metadata stays under `outputs/hydra/`.
+
+You must first generate each missing workload CSV and adjacent manifest with `python -m malleserve.tools.convert_mooncake`. If you only want Polaris-measured cells, run the relevant subsets using the same Hydra interface; the validation CSV retains missing result flags. Do not launch multiple runs concurrently under the same `experiment.name`. Existing output folders may need cleaning before re-running a case because Frontier's own metrics files can otherwise be overwritten.
+
+Validation (once the simulations have finished):
+
+```bash
+python -m malleserve.validate validation.polaris=data/malleserve/validation/polaris_summary.csv
+```
