@@ -415,6 +415,12 @@ class RoundRobinClusterScheduler(BaseClusterScheduler):
         divided between calls.
         """
         replica_ids = list(self._cluster.replicas.keys())
+        ready = getattr(self, "_transient_ready_replica_ids", None)
+        if ready is not None:
+            # Native transient mode: only ready replicas may accept requests.
+            # The precreated replicas themselves (and their GPU predictors)
+            # remain unchanged. No ready replicas => retain pending requests.
+            replica_ids = [replica_id for replica_id in replica_ids if replica_id in ready]
         if not replica_ids:
             return []
 
