@@ -7,6 +7,7 @@ defaults:
   - _self_
 
 experiment:
+  skip_completed: true
   name: ${resources.label}_r${workload.rate}
 
 metrics:

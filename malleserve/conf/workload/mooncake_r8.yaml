@@ -1,3 +1,7 @@
 rate: 8
 name: mooncake_r8
 trace: data/malleserve/mooncake_r8_330s.csv
+dataset: data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json
+warmup_seconds: 30
+measurement_seconds: 300
+max_output_tokens: 128
