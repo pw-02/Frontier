@@ -1,1 +1,1 @@
-"""MalleServe research experiments using Frontier native simulation."""\n
+"""MalleServe research experiments using Frontier native simulation."""
