@@ -1,25 +1,103 @@
-# MalleServe in Frontier
+# MalleServe — native Frontier experiments with Hydra
 
-Use this **top-level MalleServe interface** for research experiments. Existing scripts under `examples/malleserve` remain supported to avoid breaking older commands. The next cleanup can consolidate the legacy calibration and trace conversion scripts after parity testing.
+The primary experiment entry point is `malleserve/debug_run.py`. It executes
+`frontier.main.main()` **in the same Python interpreter**, so IDE breakpoints
+work inside Frontier's simulator, cluster scheduler, replica scheduler and
+transient lifecycle. The older `examples/malleserve/` scripts remain for
+compatibility and Mooncake trace conversion, not as the primary interface.
 
-## Interactive, in-process debugging
-
-Open `malleserve/debug_run.py` in VS Code/PyCharm, set `CONFIG` to a YAML file, optionally edit `OVERRIDES`, put a breakpoint inside `frontier/simulator.py` (or `frontier/transient_lifecycle.py`), and select **Debug Python File**. Or run:
+## Install and run
 
 ```bash
+git switch malleserve-development
+git pull --ff-only origin malleserve-development
+python -m pip install -e ".[test]"
 python -m malleserve.debug_run
 ```
 
-Unlike the older shell scenario runner, this calls Frontier's actual `frontier.main.main()` in the **same Python interpreter**, so breakpoints in the native scheduler and DES event loop are available. Requires the Frontier Python environment and your trace/manifest. The default `naive.yaml` uses the 330-second Mooncake rate-10 trace; edit CONFIG to `malleserve/configs/fixed4.yaml` for fixed four GPUs. Runtime profiles come from the checked-in calibrated A100/Qwen3-8B paths.
+The default `malleserve/conf/config.yaml` composes:
 
-## Presets
+- `workload/mooncake_r10.yaml` (Mooncake 10 RPS; replay an existing CSV and manifest)
+- `resources/naive.yaml` (four persistent, rotating four-GPU node candidates)
+- `model/qwen3_8b_a100.yaml` (calibrated Qwen3-8B/A100 predictor paths)
+- `scheduler/vllm_v1.yaml` (continuous batching, 2048-token batch budget, KV cache)
+- `policy/naive.yaml` (activate ready transient nodes; retry on reclamation)
 
-- `configs/fixed4.yaml` fixed four replicas.
-- `configs/fixed8.yaml` fixed eight replicas.
-- `configs/naive.yaml` four persistent plus rotating transient four-GPU nodes.
+Common Hydra commands:
 
-These currently inherit the existing presets so there is one source of truth for scenario parameters. The top-level Python runner is intended for step-through debugging; the historical `examples/malleserve/transient/run_native_scenario.py` remains available for CLI runs.
+```bash
+# Fixed-4 or fixed-8 baselines; BOTH resource and policy must agree
+python -m malleserve.debug_run resources=fixed4 policy=fixed
+python -m malleserve.debug_run resources=fixed8 policy=fixed
 
-Workload traces are produced by `examples/malleserve/convert_mooncake.py`, which consumes prepared Mooncake requests and writes a CSV of request arrival timestamps, prompt/decode token lengths and cache-block hashes along with an adjacent manifest. Transient node availability is **not** the same trace; `debug_run.py` generates its availability JSONL separately from the YAML resource lifetime. Changing the resource policy but retaining the same workload CSV gives comparable experiments.
+# Naive, but with zero startup delay
+python -m malleserve.debug_run resources.startup_seconds=0
 
-**Status**: Python runner added but still requires native execution and parity checks in the Frontier environment. It does not implement native ideal migration.
+# Change workload (CSV and adjacent manifest must exist)
+python -m malleserve.debug_run workload=mooncake_r2
+
+# Change native vLLM batch budget
+python -m malleserve.debug_run scheduler.max_tokens_in_batch=1024
+
+# Multirun sensitivity study; each job executes native Frontier independently
+python -m malleserve.debug_run -m resources.startup_seconds=0,20,40
+```
+
+Results are written under `outputs/examples/malleserve/<experiment.name>/`.
+By default the name is `<resource-label>_<workload-name>`. For multiruns
+**override `experiment.name` or include the swept parameter in its name**,
+for example:
+
+```bash
+python -m malleserve.debug_run -m \
+  resources.startup_seconds=0,20,40 \
+  'experiment.name=naive_r10_s${resources.startup_seconds}'
+```
+
+Do not run separate jobs with identical output names concurrently: Frontier
+writes to its named metrics root. Hydra writes its own sweep metadata to
+`outputs/hydra`, whereas Frontier metrics are in the path above.
+
+## IDE debugging
+
+Open `malleserve/debug_run.py` and choose **Debug Python File**. Set a
+breakpoint in `frontier/transient_lifecycle.py` at `NativeTransientLifecycle.change`
+or `frontier/simulator.py` in `Simulator.run`. Run with no CLI overrides
+for the default naive scenario, or configure IDE launch arguments such as
+`resources=fixed4 policy=fixed`. Unlike the historical Bash wrappers, the
+simulation is not launched as a child process.
+
+## Trace creation and resource availability
+
+Create a 10 RPS workload CSV from the prepared Mooncake JSON:
+
+```bash
+python examples/malleserve/convert_mooncake.py \
+  --dataset data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json \
+  --rate 10 --warmup-seconds 30 --measurement-seconds 300 \
+  --output data/malleserve/mooncake_r10_330s.csv
+```
+
+This produces the CSV of arrival timestamps, prompt/output lengths and
+prefix-block hashes, together with an adjacent `.manifest.json` recording
+counts and max token length. The converter generates *constant-rate* arrivals;
+the timestamps are not original Mooncake arrival times. Frontier's trace
+replay uses the CSV to schedule every request in its native DES.
+
+For transient scenarios a *separate* JSONL of node availability and
+reclamations is generated from `resources.node_lifetime_seconds` and
+`resources.duration_seconds`. Fixed scenarios do not use availability
+events. Keep workload and model constant when comparing resource policies.
+
+## Notes / limitations
+
+Hydra is now the primary MalleServe configuration interface, **not** the
+global configuration system for all of Frontier. The Python entry point
+translates selected Hydra groups to Frontier's existing CLI dataclasses
+and calls the native engine in-process. No separate timing simulator is
+introduced. Only fixed and naive transient policies are implemented; native
+ideal recovery and clairvoyant policies still require work.
+
+Full environment-level CPU/GPU simulation and fixed-parity validation remain
+to be completed. The illustrative 40-second startup delay has not been
+validated against Polaris.
