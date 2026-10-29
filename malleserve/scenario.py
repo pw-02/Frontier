@@ -51,7 +51,27 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         count = int(resource["persistent_gpus"]) + (
             int(resource["candidate_nodes"]) * int(resource["transient_gpus_per_node"]))
         schedule = out / "availability.jsonl"
-        events = generate(float(resource["duration_seconds"]), float(resource["node_lifetime_seconds"]))
+        lifetime = float(resource["node_lifetime_seconds"])
+        duration = float(resource["duration_seconds"])
+        lifecycle_mode = str(resource.get("lifecycle_mode", "naive"))
+        if lifecycle_mode == "no_reclamation":
+            # One transient node becomes available and remains so for the
+            # entire observed workload. Reclaim after the observation window.
+            events = [
+                {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
+                {"timestamp": duration + max(1.0, float(resource["startup_seconds"])),
+                 "node_id": "transient-0", "action": "reclaim"},
+            ]
+        elif lifecycle_mode == "naive":
+            events = generate(duration, lifetime)
+        elif lifecycle_mode == "ideal_recovery":
+            raise NotImplementedError(
+                "Ideal recovery needs KV-state transfer/admission support; "
+                "Request.restart() recomputes the prefix and is not a zero-cost migration. "
+                "Failing closed rather than reporting invalid idealized results."
+            )
+        else:
+            raise ValueError(f"Unknown lifecycle_mode: {lifecycle_mode}")
         schedule.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
         transient_args = ["--transient_schedule_file", str(schedule),
              "--transient_persistent_replicas", str(resource["persistent_gpus"]),

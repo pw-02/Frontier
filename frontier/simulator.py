@@ -1228,6 +1228,8 @@ class Simulator:
                     ),
                     "node_replica_mapping": self._transient_lifecycle.node_replicas,
                     "retries": self._transient_lifecycle.retries,
+                    "unique_retried_requests": len(self._transient_lifecycle.retried_request_ids),
+                    "reclamation_diagnostics": self._transient_lifecycle.reclamation_diagnostics,
                     "lost_processed_tokens": self._transient_lifecycle.lost_processed_tokens,
                     "purged_stale_gpu_events": self._transient_lifecycle.stale_event_purges,
                     "events": self._transient_lifecycle.lifecycle_records,

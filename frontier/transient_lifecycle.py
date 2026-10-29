@@ -142,6 +142,8 @@ class NativeTransientLifecycle:
         self.retries = 0
         self.lost_processed_tokens = 0
         self.stale_event_purges = 0
+        self.reclamation_diagnostics: list[dict] = []
+        self.retried_request_ids: set[int] = set()
 
     def _fresh_scheduler(self, replica_id: int) -> None:
         """Discard cache, running-batch and stage state; keep GPU predictor."""
@@ -193,6 +195,51 @@ class NativeTransientLifecycle:
                 seen.add(req.id)
         return result
 
+    @staticmethod
+    def _reclamation_snapshot(replica_id: int, replica_scheduler) -> tuple[dict, dict]:
+        """Capture mutually exclusive ownership and progress before scheduler destruction.
+
+        A request appearing in several internal structures is counted once,
+        using RUNNING > PREEMPTED > WAITING > QUEUED precedence. Raw
+        membership counts are retained to expose overlapping representations.
+        """
+        fields = (
+            ("running", "_running_requests"),
+            ("preempted", "_preempted_requests"),
+            ("waiting", "_waiting_requests"),
+            ("queued", "_request_queue"),
+        )
+        by_id = {}
+        raw_counts = {}
+        for state, field in fields:
+            candidates = [r for r in getattr(replica_scheduler, field, ()) if not r.completed]
+            raw_counts[state] = len(candidates)
+            for req in candidates:
+                by_id.setdefault(req.id, (state, req))
+        records = []
+        counts = {name: 0 for name, _ in fields}
+        for request_id, (state, req) in by_id.items():
+            counts[state] += 1
+            original_prompt = int(req._user_facing_num_prefill_tokens)
+            original_output = int(req._user_facing_num_decode_tokens)
+            processed = max(0, int(req.num_processed_tokens))
+            records.append({
+                "request_id": request_id,
+                "replica_id": replica_id,
+                "state": state,
+                "processed_tokens": processed,
+                "original_prompt_tokens": original_prompt,
+                "original_output_tokens": original_output,
+                "ever_processed": processed > 0,
+                "generated_progress_tokens_est": max(0, processed - original_prompt),
+            })
+        return ({
+            "replica_id": replica_id,
+            "raw_memberships": raw_counts,
+            "deduplicated_states": counts,
+            "unique_unfinished": len(by_id),
+        }, {"records": records, "requests": {i: req for i, (_, req) in by_id.items()}})
+
     def change(self, event: AvailabilityChange, generation: int | None = None):
         """Apply native lifecycle transition; return scheduling events.
 
@@ -234,13 +281,28 @@ class NativeTransientLifecycle:
             self.node_generation[node] += 1
             self.ready_ids.difference_update(replicas)
             restarting = []
+            replica_details = []
+            request_details = []
             for replica_id in replicas:
                 old_scheduler = self.scheduler.get_replica_scheduler(replica_id, 0)
-                restarting.extend(self._unfinished_requests(old_scheduler))
+                unfinished = self._unfinished_requests(old_scheduler)
+                detail, snapshot = self._reclamation_snapshot(replica_id, old_scheduler)
+                if {r.id for r in unfinished} != set(snapshot["requests"]):
+                    raise RuntimeError("Reclamation request ownership mismatch")
+                replica_details.append(detail)
+                request_details.extend(snapshot["records"])
+                restarting.extend(unfinished)
                 self._fresh_scheduler(replica_id)
             unique = {}
             for request in restarting:
                 unique[request.id] = request
+            if len(unique) != len(request_details):
+                raise RuntimeError("Duplicate live request ID across reclaimed replicas")
+            globally_queued = {r.id for r in self.scheduler._request_queue}
+            if globally_queued.intersection(unique):
+                raise RuntimeError("Request simultaneously globally queued and replica-local")
+            if len(globally_queued) != len(self.scheduler._request_queue):
+                raise RuntimeError("Duplicate live request IDs in global queue")
             for req in unique.values():
                 # Client-level retry: lose ALL prior generated output.
                 # Set processed to the original prompt length before restart,
@@ -260,6 +322,20 @@ class NativeTransientLifecycle:
                 req.on_enter_waiting_queue(at, ClusterType.MONOLITHIC)
                 self.scheduler.add_request(req)
                 self.retries += 1
+                self.retried_request_ids.add(req.id)
+            if len({r.id for r in self.scheduler._request_queue}) != len(self.scheduler._request_queue):
+                raise RuntimeError("Duplicate request IDs after requeue")
+            diagnostic = {
+                "timestamp": at,
+                "node_id": node,
+                "replicas": replica_details,
+                "requests": request_details,
+                "unique_interrupted": len(unique),
+                "queued_only": sum(d["state"] == "queued" for d in request_details),
+                "never_processed": sum(not d["ever_processed"] for d in request_details),
+                "processed_tokens_total": sum(d["processed_tokens"] for d in request_details),
+            }
+            self.reclamation_diagnostics.append(diagnostic)
             self.lifecycle_records.append({
                 "timestamp": at, "action": "reclaim", "node_id": node,
                 "replica_ids": replicas, "retried_requests": len(unique)})

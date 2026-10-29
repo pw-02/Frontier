@@ -84,6 +84,8 @@ def fake_controller(occupied=(), startup=4):
     controller.retries = 0
     controller.lost_processed_tokens = 0
     controller.stale_event_purges = 0
+    controller.reclamation_diagnostics = []
+    controller.retried_request_ids = set()
     controller._fresh_scheduler = lambda replica_id: controller.scheduler._replicas.__setitem__(
         replica_id, FakeReplicaScheduler())
     return controller
@@ -149,6 +151,33 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(r._num_processed_tokens, 0)
         self.assertEqual(len(generated), 1)
         self.assertEqual(c.scheduler._replicas[1]._allocation_map, {})
+
+    def test_reclamation_diagnostics_count_queued_and_running_once(self):
+        running = FakeRequest(3, processed=145)
+        queued = FakeRequest(4, processed=0)
+        c = fake_controller((running,))
+        worker = c.scheduler._replicas[1]
+        worker._request_queue = [queued]
+        # Simulate a request also referenced by the waiting collection.
+        worker._waiting_requests = [running]
+        c.change(AvailabilityChange(0, "transient-a", "available"))
+        c.change(AvailabilityChange(4, "transient-a", "ready"), generation=1)
+        c.change(AvailabilityChange(7, "transient-a", "reclaim"))
+        diagnostic = c.reclamation_diagnostics[0]
+        self.assertEqual(diagnostic["unique_interrupted"], 2)
+        self.assertEqual(diagnostic["queued_only"], 1)
+        self.assertEqual(diagnostic["never_processed"], 1)
+        self.assertEqual(diagnostic["replicas"][0]["deduplicated_states"]["running"], 1)
+        self.assertEqual(c.retries, 2)
+        self.assertEqual(c.retried_request_ids, {3, 4})
+
+    def test_duplicate_global_request_fails_closed(self):
+        r = FakeRequest(8)
+        c = fake_controller((r,))
+        c.scheduler._request_queue = [r]
+        c.change(AvailabilityChange(0, "transient-a", "available"))
+        with self.assertRaisesRegex(RuntimeError, "simultaneously globally queued"):
+            c.change(AvailabilityChange(3, "transient-a", "reclaim"))
 
     def test_allocation_ownership_check_fails_closed(self):
         worker = FakeReplicaScheduler()
