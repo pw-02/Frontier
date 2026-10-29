@@ -15,7 +15,7 @@ BATCH_SIZES = (1, 2, 4, 8, 16)
 CONTEXTS = (128, 1024, 4096)
 
 
-def probe(predictor, model_layers: int, polaris: dict):
+def probe(predictor, model_layers: int, polaris: dict, before_predict=None):
     from frontier.entities import Batch, Request
     from frontier.types import ClusterType
     rows = []
@@ -32,6 +32,13 @@ def probe(predictor, model_layers: int, polaris: dict):
                           num_tokens=[1] * size, is_moe=False,
                           num_context_tokens=[context] * size,
                           request_is_decoding=[True] * size)
+            family = before_predict(batch) if before_predict is not None else (
+                predictor._measurement_family_name(
+                    predictor._activate_measurement_type_for_batch(batch)
+                )
+            )
+            if family != "kernel_only":
+                raise RuntimeError(f"Decode predictor selected {family}, expected kernel_only")
             stage = predictor.predict_stage_execution_time(
                 batch, stage_id=0, cluster_type=ClusterType.MONOLITHIC,
                 num_layers=model_layers, layer_id=0,
@@ -41,6 +48,7 @@ def probe(predictor, model_layers: int, polaris: dict):
             host_ms = total_ms - model_ms
             rows.append({
                 "batch_size": size, "context_tokens": context,
+                "measurement_family": family,
                 "polaris_engine_wall_ms": polaris[(size, context)],
                 "frontier_model_ms": round(model_ms, 6),
                 "frontier_modelled_host_ms": round(host_ms, 6),

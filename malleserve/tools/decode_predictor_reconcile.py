@@ -44,6 +44,24 @@ def build_batch(contexts, *, prompts=None, num_tokens=None, decoding=None):
                  request_is_decoding=[bool(v) for v in decoding])
 
 
+def select_live_decode_family(predictor, batch):
+    """Select exactly the operator family used by a live CUDA-graph decode step.
+
+    Use the predictor's batch-aware selector, not a private table assignment;
+    fail loudly if the synthetic batch is missing graph-mode metadata.
+    """
+    from frontier.types import MeasurementType
+    selected = predictor._activate_measurement_type_for_batch(batch)
+    family = predictor._measurement_family_name(selected)
+    if selected != MeasurementType.KERNEL_ONLY or family != "kernel_only":
+        raise RuntimeError(
+            "Synthetic decode batch selected timing family "
+            f"{selected!s} ({family}), expected KERNEL_ONLY (kernel_only). "
+            "Check CUDA-graph batch metadata and scheduler configuration."
+        )
+    return family
+
+
 def components(value):
     names = {
         "model_ms": "model_time_ms",
@@ -70,6 +88,7 @@ def reconcile(predictor, captures, *, limit=30, tolerance_ms=0.001):
             contexts = item["context_tokens"]
             batch = build_batch(contexts, num_tokens=item["num_tokens"],
                                 decoding=item["request_is_decoding"])
+            family = select_live_decode_family(predictor, batch)
             current = predictor.predict_stage_execution_time(
                 batch, stage_id=int(item["stage_id"]),
                 cluster_type=ClusterType.MONOLITHIC,
@@ -79,6 +98,7 @@ def reconcile(predictor, captures, *, limit=30, tolerance_ms=0.001):
             delta = reproduced["model_ms"] - float(original["model_ms"])
             row = {
                 "batch_id": item["batch_id"],
+                "measurement_family": family,
                 "size": len(contexts),
                 "context_tokens": json.dumps(contexts),
                 "captured_model_ms": original["model_ms"],
@@ -169,7 +189,8 @@ def main():
     # Same predictor instance, same fixed4 configuration, all 15 grid cases.
     if args.attention_trace is not None:
         os.environ["FRONTIER_ATTENTION_TRACE_ORIGIN"] = "synthetic_grid_fixed4"
-    grid = probe(predictor, layers, read_polaris(args.polaris_summary))
+    grid = probe(predictor, layers, read_polaris(args.polaris_summary),
+                 before_predict=lambda batch: select_live_decode_family(predictor, batch))
     grid_path = Path(str(args.output_prefix) + "_grid.csv")
     write_csv(grid_path, grid)
     print(f"15-point fixed4 synthetic decode grid saved {grid_path}")
