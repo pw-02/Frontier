@@ -60,6 +60,16 @@ def probe(predictor, model_layers: int, polaris: dict, before_predict=None):
                 "batch_size": size, "context_tokens": context,
                 "measurement_family": family,
                 "polaris_engine_wall_ms": polaris[(size, context)],
+                "frontier_attention_ms": round(float(stage.attention_time), 6),
+                "frontier_mlp_up_ms": round(float(stage.mlp_layer_up_proj_execution_time), 6),
+                "frontier_mlp_down_ms": round(float(stage.mlp_layer_down_proj_execution_time), 6),
+                "frontier_mlp_act_ms": round(float(stage.mlp_layer_act_execution_time), 6),
+                "frontier_forward_launch_ms": round(float(stage.forward_launch_time), 6),
+                "frontier_other_model_ms": round(
+                    model_ms - sum(float(getattr(stage, name)) for name in (
+                        "attention_time", "mlp_layer_up_proj_execution_time",
+                        "mlp_layer_down_proj_execution_time",
+                        "mlp_layer_act_execution_time")), 6),
                 "frontier_model_ms": round(model_ms, 6),
                 "frontier_modelled_host_ms": round(host_ms, 6),
                 "frontier_total_stage_ms": round(total_ms, 6),
