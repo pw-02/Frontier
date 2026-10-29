@@ -1212,6 +1212,27 @@ class Simulator:
             logger.info(f"Inter-cluster communication stats: {comm_stats}")
 
     def _write_output(self) -> None:
+        if self._transient_lifecycle is not None:
+            import json as json_module
+            path = os.path.join(
+                self._config.metrics_config.output_dir,
+                "transient_lifecycle.json",
+            )
+            os.makedirs(self._config.metrics_config.output_dir, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as handle:
+                json_module.dump({
+                    "mode": "native_frontier_naive_replay",
+                    "startup_seconds": self._transient_lifecycle.startup,
+                    "persistent_replicas": len(self._transient_lifecycle.ids) - sum(
+                        len(ids) for ids in self._transient_lifecycle.node_replicas.values()
+                    ),
+                    "node_replica_mapping": self._transient_lifecycle.node_replicas,
+                    "retries": self._transient_lifecycle.retries,
+                    "lost_processed_tokens": self._transient_lifecycle.lost_processed_tokens,
+                    "purged_stale_gpu_events": self._transient_lifecycle.stale_event_purges,
+                    "events": self._transient_lifecycle.lifecycle_records,
+                }, handle, indent=2)
+                handle.write("\\n")
         logger.info("Starting metrics output...")
         logger.info(f"Output directory: {self._config.metrics_config.output_dir}")
         logger.info(f"write_metrics={self._config.metrics_config.write_metrics}")
