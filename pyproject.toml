@@ -36,3 +36,6 @@ profiling = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["frontier*", "malleserve*"]
+
+[tool.setuptools.package-data]
+malleserve = ["conf/*.yaml", "conf/*/*.yaml"]
