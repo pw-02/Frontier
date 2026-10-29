@@ -64,9 +64,9 @@ def _new_comparison_row(workers, rate, sim, reference):
 
 
 def find_frontier(root: Path, workers: int, rate: int):
-    names = [f"fixed{workers}_mooncake_r{rate}", f"validation_w{workers}_r{rate}"]
+    names = [f"fixed{workers}_r{rate}", f"fixed{workers}_mooncake_r{rate}", f"validation_w{workers}_r{rate}"]
     matches = [path for name in names
-               for path in root.glob(f"{name}/**/malleserve_summary.json")]
+               for path in (root / name).rglob("malleserve_summary.json") if path.is_file()]
     if len(matches) > 1:
         raise ValueError(f"Multiple Frontier summaries for GPUs={workers}, RPS={rate}")
     return json.loads(matches[0].read_text(encoding="utf-8")) if matches else None
