@@ -75,7 +75,7 @@ def find_frontier(root: Path, workers: int, rate: int):
     except json.JSONDecodeError as exc:
         # Older MalleServe runs could leave a literal backslash-n suffix.
         # Accept *only* that exact artifact; never silently ignore extra JSON.
-        if raw.endswith("\\\\n") and not raw.endswith("\n"):
+        if raw.endswith("\\n") and not raw.endswith("\n"):
             try:
                 result = json.loads(raw[:-2])
             except json.JSONDecodeError:
