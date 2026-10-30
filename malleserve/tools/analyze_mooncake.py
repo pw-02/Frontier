@@ -22,6 +22,8 @@ def percentile(values: list[float], q: float) -> float | None:
     a = sorted(values)
     k = (len(a) - 1) * q
     lo, hi = math.floor(k), math.ceil(k)
+    if lo == hi:
+        return a[lo]
     return a[lo] * (hi - k) + a[hi] * (k - lo)
 
 
