@@ -92,3 +92,20 @@ arrivals during 0–30. The lifecycle reclaim and ready events occur at absolute
 relative to `schedule_started`. Earlier aligned-window output prior to this
 correction was shifted by 30 seconds and must be disregarded. The old default
 mode retains legacy behavior for reproducibility but warns that clocks differ.
+
+## Publication-style figures
+
+After running the fixed comparator with `--aligned-windows` and creating
+`outputs/malleserve/validation/one_reclaim_aligned.csv`:
+
+```bash
+python -m malleserve.tools.plot_one_reclaim_comparison \\
+  --csv outputs/malleserve/validation/one_reclaim_aligned.csv \\
+  --output outputs/malleserve/figures/one_reclaim_r10
+```
+
+Requires matplotlib and numpy. Produces 300-dpi PNG and vector PDF for
+`one_reclaim_r10_p95` (comparison with error percentages) and
+`one_reclaim_r10_metrics` (mean/P50/P95/P99 trends). Aborts if any
+aligned window or completion is missing. These are observational, not
+request-paired or causally controlled comparisons.
