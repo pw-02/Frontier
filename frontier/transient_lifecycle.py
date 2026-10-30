@@ -157,6 +157,24 @@ class NativeTransientLifecycle:
         replica_config = cluster_config.replica_config
         replica_scheduler_config = parent._get_cluster_specific_replica_scheduler_config(
             cluster_config, ClusterType.MONOLITHIC)
+        # Reclamation purges the old BatchStageEndEvent. Any active
+        # stage admission ticket would otherwise permanently block the
+        # replacement scheduler, which shares cluster-owned stage contexts.
+        from frontier.scheduler.replica_stage_scheduler.stage_execution_context import (
+            StageExecutionContext,
+        )
+        contexts = parent._stage_execution_contexts
+        stage_keys = [key for key in contexts if key[0] == replica_id]
+        if not stage_keys:
+            raise RuntimeError(f"No stage contexts for reclaimed replica {replica_id}")
+        for key in stage_keys:
+            old = contexts[key]
+            contexts[key] = StageExecutionContext(
+                replica_id=key[0],
+                stage_id=key[1],
+                ep_size=old.ep_size,
+                full_stage_capacity=old.full_stage_capacity,
+            )
         new_scheduler = _create_scheduler(
             scheduler_type=replica_scheduler_config.get_type(),
             replica_config=replica_config,

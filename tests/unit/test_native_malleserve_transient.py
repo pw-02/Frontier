@@ -150,6 +150,44 @@ class ControllerTests(unittest.TestCase):
         c.change(AvailabilityChange(4, "transient-a", "ready"), generation=1)
         self.assertEqual(c.ready_ids, {0, 1})
 
+    def test_fresh_scheduler_resets_stage_context_before_rebuild(self):
+        from frontier.scheduler.replica_stage_scheduler.stage_execution_context import (
+            StageExecutionContext,
+        )
+        from frontier.scheduler.replica_scheduler.vllm_v1_engine_replica_scheduler import (
+            VLLMv1EngineReplicaScheduler,
+        )
+        persistent = StageExecutionContext(replica_id=0, stage_id=0, ep_size=1)
+        transient = StageExecutionContext(replica_id=1, stage_id=0, ep_size=1)
+        old_ticket = transient.enqueue_full_stage(operation_id=("old", 1))
+        self.assertTrue(transient.try_acquire(old_ticket))
+        parent = SimpleNamespace(
+            _stage_execution_contexts={(0, 0): persistent, (1, 0): transient},
+            _config=SimpleNamespace(replica_config=object()),
+            _request_generator_config=object(),
+            _cluster=SimpleNamespace(replicas={1: object()}),
+            _predictor=object(),
+            _replica_schedulers={},
+            _full_stage_replica_schedulers={},
+            _get_cluster_specific_replica_scheduler_config=lambda *_: SimpleNamespace(
+                get_type=lambda: "fake"),
+        )
+        controller = object.__new__(NativeTransientLifecycle)
+        controller.scheduler = parent
+        observed = []
+        def build(**kwargs):
+            observed.append(kwargs["cluster_scheduler"]._stage_execution_contexts[(1, 0)])
+            return Mock(spec=VLLMv1EngineReplicaScheduler)
+        with patch("frontier.transient_lifecycle._create_scheduler", side_effect=build):
+            controller._fresh_scheduler(1)
+        replacement = parent._stage_execution_contexts[(1, 0)]
+        self.assertIs(replacement, observed[0])
+        self.assertIsNot(replacement, transient)
+        self.assertTrue(replacement.is_idle)
+        self.assertIs(parent._stage_execution_contexts[(0, 0)], persistent)
+        new_ticket = replacement.enqueue_full_stage(operation_id=("new", 1))
+        self.assertTrue(replacement.try_acquire(new_ticket))
+
     def test_reclaim_resets_kv_and_retries_once(self):
         r = FakeRequest(44, processed=145)
         c = fake_controller((r,))
