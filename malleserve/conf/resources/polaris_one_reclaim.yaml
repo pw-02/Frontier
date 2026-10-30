@@ -1,0 +1,13 @@
+label: polaris_one_reclaim
+mode: transient
+persistent_gpus: 4
+transient_gpus_per_node: 4
+candidate_nodes: 1
+duration_seconds: 330
+node_lifetime_seconds: 60
+startup_seconds: 0
+lifecycle_mode: observed_one_reclaim
+# Relative to measured-phase start; represents *service readiness* only.
+# Polaris: reclaim ~180s; 4 workers become ready again ~299s.
+reclaim_at_seconds: 180
+ready_again_at_seconds: 299

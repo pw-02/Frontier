@@ -46,10 +46,12 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         count = int(resource["gpus"])
         transient_args = []
     elif resource["mode"] == "transient":
-        if int(resource["candidate_nodes"]) != 2:
+        if (resource.get("lifecycle_mode") != "observed_one_reclaim"
+                and int(resource["candidate_nodes"]) != 2):
             raise ValueError("Current rotation generator supports 2 candidate nodes")
         lifecycle_mode = str(resource.get("lifecycle_mode", "naive"))
-        candidate_count = 1 if lifecycle_mode == "no_reclamation" else int(resource["candidate_nodes"])
+        candidate_count = (1 if lifecycle_mode in ("no_reclamation", "observed_one_reclaim")
+                           else int(resource["candidate_nodes"]))
         count = int(resource["persistent_gpus"]) + (
             candidate_count * int(resource["transient_gpus_per_node"]))
         schedule = out / "availability.jsonl"
@@ -60,6 +62,18 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
             # the complete request-drain period as well as measurement.
             events = [
                 {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
+            ]
+        elif lifecycle_mode == "observed_one_reclaim":
+            if float(resource["startup_seconds"]) != 0:
+                raise ValueError("Observed one-reclaim timeline specifies ready times; startup_seconds must be 0")
+            reclaim_at = float(resource["reclaim_at_seconds"])
+            ready_again_at = float(resource["ready_again_at_seconds"])
+            if not (0 < reclaim_at < ready_again_at <= duration):
+                raise ValueError("Expected 0 < reclaim_at < ready_again_at <= duration")
+            events = [
+                {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
+                {"timestamp": reclaim_at, "node_id": "transient-0", "action": "reclaim"},
+                {"timestamp": ready_again_at, "node_id": "transient-0", "action": "available"},
             ]
         elif lifecycle_mode == "naive":
             events = generate(duration, lifetime)
