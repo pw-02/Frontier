@@ -24,6 +24,18 @@ class CompareOneReclaimTest(unittest.TestCase):
         self.assertEqual(result["n"], 1501)
         self.assertEqual(result["p50_s"], 751)
 
+
+    def test_absolute_simulation_clock_aligned_windows(self):
+        from malleserve.tools.compare_one_reclaim import ALIGNED_WINDOWS
+        events = []
+        for i in range(3300):
+            at = i / 10
+            events.append({"event_type": "request_arrival", "request_id": i, "arrived_at": at})
+            events.append({"event_type": "request_completion", "request_id": i, "completed_at": at + 1})
+        records = frontier_records(events, 0.0)
+        counts = [r["arrived"] for r in window_rows(records, "frontier", ALIGNED_WINDOWS)]
+        self.assertEqual(counts, [1500, 600, 590, 310])
+
     def test_unknown_completion_rejected(self):
         with self.assertRaisesRegex(ValueError, "without arrivals"):
             frontier_records([{"event_type": "request_completion",

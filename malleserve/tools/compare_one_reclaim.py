@@ -116,11 +116,18 @@ def main():
                         default=Path("one_reclaim_latency_by_arrival.csv"))
     args = parser.parse_args()
     manifest = json.loads(args.frontier_manifest.read_text(encoding="utf-8"))
+    frontier_origin = 0.0 if args.aligned_windows else float(manifest["warmup_seconds"])
     frontier = frontier_records(
         read_jsonl(args.frontier_run / "metrics_ground_truth.jsonl"),
-        float(manifest["warmup_seconds"]))
+        frontier_origin)
     polaris = polaris_records(read_jsonl(args.polaris_requests), args.polaris_zero_unix)
     windows = ALIGNED_WINDOWS if args.aligned_windows else WINDOWS
+    if args.aligned_windows:
+        print("Aligned mode: Frontier arrival times use the absolute simulation clock "
+              "(no warmup subtraction); Polaris uses schedule_started epoch.")
+    else:
+        print("WARNING: Legacy mode subtracts warmup from Frontier only. "
+              "Use --aligned-windows for an equal-clock comparison.")
     rows = window_rows(frontier, "frontier", windows) + window_rows(polaris, "polaris", windows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="", encoding="utf-8") as stream:

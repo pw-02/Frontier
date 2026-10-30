@@ -83,3 +83,12 @@ python -m malleserve.tools.compare_one_reclaim \\
   --polaris-zero-unix 1793323433.066342 \\
   --aligned-windows --output one_reclaim_aligned_stagefix.csv
 ```
+
+**Important time-origin correction:** The native Frontier event trace has 3300
+arrivals at absolute simulation seconds 0.0–329.9, including 300 warmup
+arrivals during 0–30. The lifecycle reclaim and ready events occur at absolute
+180 and 299 seconds. With `--aligned-windows`, do **not** subtract the manifest
+30-second warmup: only filter by windows starting at 30. Polaris is timestamped
+relative to `schedule_started`. Earlier aligned-window output prior to this
+correction was shifted by 30 seconds and must be disregarded. The old default
+mode retains legacy behavior for reproducibility but warns that clocks differ.
