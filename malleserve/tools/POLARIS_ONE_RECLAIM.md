@@ -55,3 +55,13 @@ Different trace sampling, per-request input/output token sequences,
 timing predictor bias, and retry semantics remain potential confounders.
 Use windowed curves as evidence, not exact per-request pairing.
 \nThe supplied Polaris event log records `schedule_started` at Unix 1793323433.066342; the requests use `phase=measured`. Use this timestamp as the observed measured-phase origin.\n
+## Request accounting (updated comparator)
+
+The CSV now includes `arrived`, `completed_eventually`, `no_completion_event`,
+`completed_after_window_end`, and `completion_fraction`. The former `n`
+remains a count of requests with completion records. Percentiles are conditional
+on completion and **must not** be interpreted as full-arrival percentiles when
+`no_completion_event` is nonzero. Results need no simulation rerun.
+
+The comparator cannot attribute interruptions without separately recorded
+reclamation diagnostics; do not infer retry counts from missing completions.
