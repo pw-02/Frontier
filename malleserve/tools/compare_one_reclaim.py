@@ -35,7 +35,7 @@ def frontier_points(events, warmup):
 def polaris_points(requests, zero):
     result=[]
     for row in requests:
-        if row.get("phase") != "measurement":
+        if row.get("phase") != "measured":
             continue
         start = float(row["started_at_unix"])
         finish = row.get("completed_at_unix",row.get("finished_at_unix"))

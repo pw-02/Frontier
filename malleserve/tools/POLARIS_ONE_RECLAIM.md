@@ -46,7 +46,7 @@ python -m malleserve.tools.compare_one_reclaim \\
   --frontier-run outputs/malleserve/runs/polaris_one_reclaim_r10 \\
   --frontier-manifest data/malleserve/mooncake_r10_330s.manifest.json \\
   --polaris-requests /path/to/data/requests.jsonl \\
-  --polaris-zero-unix ACTUAL_MEASUREMENT_START_UNIX \\
+  --polaris-zero-unix 1793323433.066342 \\
   --output one_reclaim_latency_by_arrival.csv
 ```
 
@@ -54,3 +54,4 @@ The comparison bins arrivals [0,180), [180,240), [240,300) seconds.
 Different trace sampling, per-request input/output token sequences,
 timing predictor bias, and retry semantics remain potential confounders.
 Use windowed curves as evidence, not exact per-request pairing.
+\nThe supplied Polaris event log records `schedule_started` at Unix 1793323433.066342; the requests use `phase=measured`. Use this timestamp as the observed measured-phase origin.\n
