@@ -17,6 +17,7 @@ from statistics import mean
 from malleserve.tools.analyze_mooncake import percentile
 
 WINDOWS = ((0, 180), (180, 240), (240, 300))
+ALIGNED_WINDOWS = ((30, 180), (180, 240), (240, 299), (299, 330))
 
 
 def frontier_records(events, warmup):
@@ -109,6 +110,8 @@ def main():
     parser.add_argument("--polaris-requests", type=Path, required=True)
     parser.add_argument("--polaris-zero-unix", type=float, required=True,
                         help="Polaris schedule_started epoch (not first measured request)")
+    parser.add_argument("--aligned-windows", action="store_true",
+                        help="Use matched 30-180s baseline and isolate 299-330s post-restore arrivals")
     parser.add_argument("--output", type=Path,
                         default=Path("one_reclaim_latency_by_arrival.csv"))
     args = parser.parse_args()
@@ -117,7 +120,8 @@ def main():
         read_jsonl(args.frontier_run / "metrics_ground_truth.jsonl"),
         float(manifest["warmup_seconds"]))
     polaris = polaris_records(read_jsonl(args.polaris_requests), args.polaris_zero_unix)
-    rows = window_rows(frontier, "frontier") + window_rows(polaris, "polaris")
+    windows = ALIGNED_WINDOWS if args.aligned_windows else WINDOWS
+    rows = window_rows(frontier, "frontier", windows) + window_rows(polaris, "polaris", windows)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))

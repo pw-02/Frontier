@@ -65,3 +65,21 @@ on completion and **must not** be interpreted as full-arrival percentiles when
 
 The comparator cannot attribute interruptions without separately recorded
 reclamation diagnostics; do not infer retry counts from missing completions.
+
+## Aligned-window and recovery analysis
+
+Use the same comparator with `--aligned-windows` to compare [30,180),
+[180,240), [240,299) and [299,330) seconds. The first window excludes
+Frontier's first 30 seconds absent from measured Polaris data; the final
+window isolates arrivals after restored transient workers become ready.
+This does **not** pair requests across systems or eliminate trace differences.
+All percentiles are grouped by arrival time (not completion time).
+
+```bash
+python -m malleserve.tools.compare_one_reclaim \\
+  --frontier-run outputs/malleserve/runs/polaris_one_reclaim_r10_stagefix \\
+  --frontier-manifest data/malleserve/mooncake_r10_330s.manifest.json \\
+  --polaris-requests /path/to/data/requests.jsonl \\
+  --polaris-zero-unix 1793323433.066342 \\
+  --aligned-windows --output one_reclaim_aligned_stagefix.csv
+```
