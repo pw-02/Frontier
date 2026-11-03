@@ -22,8 +22,8 @@ CONTEXTS = (128, 1024, 4096)
 
 # All of these names are scalar components of one physical layer.
 OPS = (
-    "attention_layer_pre_proj_execution_time",
-    "attention_layer_post_proj_execution_time",
+    "attention_pre_proj_time",
+    "attention_post_proj_time",
     "attention_decode_execution_time",
     "attention_prefill_execution_time",
     "attention_rope_execution_time",
