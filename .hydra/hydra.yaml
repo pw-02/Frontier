@@ -2,7 +2,7 @@ hydra:
   run:
     dir: .
   sweep:
-    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: outputs/hydra
     subdir: ${hydra.job.num}
   launcher:
     _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
@@ -112,14 +112,17 @@ hydra:
     hydra:
     - hydra.mode=RUN
     task:
-    - validation.polaris=data/malleserve/validation/polaris_summary.csv
+    - resources=fixed8
+    - policy=fixed
+    - workload=mooncake_r10
+    - experiment.name=baseline_fixed8_r10
   job:
-    name: validate
+    name: debug_run
     chdir: false
-    override_dirname: validation.polaris=data/malleserve/validation/polaris_summary.csv
+    override_dirname: experiment.name=baseline_fixed8_r10,policy=fixed,resources=fixed8,workload=mooncake_r10
     id: ???
     num: ???
-    config_name: validate
+    config_name: config
     env_set: {}
     env_copy: []
     config:
@@ -143,6 +146,11 @@ hydra:
       provider: schema
     output_dir: /home/pwatters/projects/Frontier
     choices:
+      policy: fixed
+      scheduler: vllm_v1
+      model: qwen3_8b_a100
+      resources: fixed8
+      workload: mooncake_r10
       hydra/env: default
       hydra/callbacks: null
       hydra/job_logging: default

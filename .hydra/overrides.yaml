@@ -1,1 +1,4 @@
-- validation.polaris=data/malleserve/validation/polaris_summary.csv
+- resources=fixed8
+- policy=fixed
+- workload=mooncake_r10
+- experiment.name=baseline_fixed8_r10

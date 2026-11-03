@@ -73,13 +73,13 @@ def main() -> None:
     ax.yaxis.grid(True, linestyle="-", linewidth=.65, alpha=.16)
     ax.set_axisbelow(True)
     ax.legend(loc="upper left", frameon=False, ncol=2, fontsize=10)
-    ax.set_title("Mean latency increases with output length", loc="left", pad=22)
+    # ax.set_title("Mean latency increases with output length", loc="left", pad=22)
     fig.text(.125, .88, "Qwen3-8B  |  4 × A100 GPUs  |  10 requests/s  |  3,000 measured requests",
              ha="left", fontsize=10, color="#657386")
-    fig.text(.125, .035,
-             "Labels above groups: Frontier relative error. Polaris client and Frontier engine latency have different timing boundaries.\n"
-             "Exploratory comparison: Polaris and Frontier values were extracted from separate run archives.",
-             ha="left", fontsize=8.5, color="#667085")
+    # fig.text(.125, .035,
+    #          "Labels above groups: Frontier relative error. Polaris client and Frontier engine latency have different timing boundaries.\n"
+    #          "Exploratory comparison: Polaris and Frontier values were extracted from separate run archives.",
+    #          ha="left", fontsize=8.5, color="#667085")
     fig.subplots_adjust(left=.125, right=.97, top=.82, bottom=.21)
 
     path = args.output_prefix

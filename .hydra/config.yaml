@@ -1,4 +1,35 @@
-validation:
-  polaris: data/malleserve/validation/polaris_summary.csv
-  frontier: outputs/malleserve/runs
-  output: outputs/malleserve/validation/fixed_capacity_comparison.csv
+workload:
+  rate: 10
+  name: mooncake_r10
+  trace: data/malleserve/mooncake_r10_330s.csv
+  dataset: data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json
+  warmup_seconds: 30
+  measurement_seconds: 300
+  max_output_tokens: 128
+resources:
+  label: fixed8
+  mode: fixed
+  gpus: 8
+model:
+  name: Qwen/Qwen3-8B
+  device: a100
+  attention_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_calibrated.csv
+  linear_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv
+  attention_kernel_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_kernel_only.csv
+scheduler:
+  name: vllm_v1
+  cluster: round_robin
+  decode_cuda_graph_mode: piecewise
+  max_model_len: 17000
+  max_tokens_in_batch: 2048
+  block_size: 16
+  num_blocks: 8192
+  enable_prefix_caching: true
+  enable_chunked_prefill: true
+policy:
+  name: fixed
+experiment:
+  skip_completed: true
+  name: baseline_fixed8_r10
+metrics:
+  slo_seconds: 30
