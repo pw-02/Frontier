@@ -23,23 +23,6 @@ Set a breakpoint in `frontier/transient_lifecycle.py` or `frontier/simulator.py`
 python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=naive_s${resources.startup_seconds}'
 ```
 
-## Cluster routing: round robin versus JSQ
-
-The existing default is `scheduler.cluster=round_robin`. Compare a
-**join-shortest-queue (JSQ)** run with the same workload using:
-
-```bash
-python -m malleserve.debug_run resources=fixed4 policy=fixed workload=mooncake_r12 \
-  scheduler.cluster=jsq calibration=baseline experiment.name=fixed4_r12_jsq
-```
-
-JSQ uses each replica scheduler's live `num_pending_requests` count
-(outstanding waiting and running requests), updating the count for all
-assignments in the same routing event. Ties rotate deterministically.
-In transient runs, only ready replicas are eligible. This is a routing
-baseline, **not** a new worker-level token scheduler. Run JSQ with a
-distinct experiment name to keep the round-robin baseline.
-
 ## Workloads
 
 Convert prepared Mooncake JSON to a request trace CSV and matching manifest:
