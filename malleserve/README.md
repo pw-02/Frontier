@@ -23,6 +23,78 @@ Set a breakpoint in `frontier/transient_lifecycle.py` or `frontier/simulator.py`
 python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=baseline_s${resources.startup_seconds}'
 ```
 
+## Medium-scale overlapping HPC capacity experiments (new)
+
+The **native Frontier** lifecycle now accepts arbitrary overlapping availability
+events rather than assuming two alternating nodes. The existing rotation
+preset is unchanged. New `resources=transient_large` provides an
+**explicitly synthetic**, seeded, heterogeneous node availability model:
+
+- 8 permanent GPU replicas, 16 independent candidate nodes × 4 GPUs each:
+  at most 72 ready GPU replicas (all only if candidates overlap).
+- Candidates arrive at staggered times; allocations last uniformly 90–240
+  simulated seconds, with 20–90 seconds between allocations.
+- 40-second startup applies to each allocation. Each node's schedule is
+  deterministic for a specified seed; independent candidate availability
+  intervals may overlap.
+- Fixed 8, Fixed 16 and Fixed 32 serve as always-ready reference capacities.
+- `workload=mooncake_r34` replays **34 constant arrivals/sec** over the
+  previous 30s warmup + 300s measurement window (11,220 requests). It uses
+  the existing prepared 12k-record Mooncake dataset with the existing
+  output length cap of 128 tokens; **this is not yet a one-hour or
+  trace-timestamp-faithful workload**.
+
+Quick smoke run with fewer candidates first:
+
+```bash
+python -m unittest tests.unit.test_malleserve_hydra -v
+python -m malleserve.debug_run resources=transient_large policy=transient \
+  workload=mooncake_r34 resources.candidate_nodes=4 \
+  scheduler.routing_policy=cwa \
+  experiment.group=large_scale_hpc_r34 \
+  experiment.name=smoke_n4_cwa_r34
+```
+
+Full fixed/transient comparison (2 routing policies × 3 fixed capacities,
+2 recovery modes × 1 resource seed = **10 simulations** by default):
+
+```bash
+bash malleserve/tools/run_large_scale_sweep.sh
+python -m malleserve.tools.summarize_large_scale_sweep
+```
+
+For three seeds and all routing policies (9 fixed + 18 transient = **27 runs**):
+
+```bash
+SEEDS="7 19 41" ROUTINGS="rr wa cwa" \
+  bash malleserve/tools/run_large_scale_sweep.sh
+```
+
+All results are under `outputs/malleserve/runs/large_scale_hpc_r34/`.
+The summary records latency, SLO, in-window completion throughput, outstanding
+work, reclamation counts, retries and lost/restored work. Completed matching
+runs are skipped when repeated.
+
+To replay **your own HPC availability log**, first convert it to JSONL
+with one event per line:
+`{"timestamp": 120.0, "node_id": "compute-12", "action": "available"}`
+or action `"reclaim"`. Timestamps are simulated seconds from experiment
+start, and node IDs represent distinct four-GPU groups in this preset.
+Events can overlap across nodes but must alternate available/reclaim
+**within** each node. Every named candidate consumes preallocated simulator
+replicas. In the Hydra CLI set `resources.schedule_file=/absolute/path/to/trace.jsonl`;
+this takes precedence over the synthetic generator. All events are checked
+using Frontier's native `read_availability` validator, and the external
+trace is included in experiment fingerprints so changes require a new run.
+For an external trace use a unique `experiment.name` to avoid overwriting
+past results. The reported candidate count derives from distinct node IDs
+in the file, not `resources.candidate_nodes`.
+
+These are **synthetic sensitivity benchmarks**, not claims about a measured
+HPC system. Before interpreting results as realistic deployment performance,
+replace synthetic availability with scheduler allocation logs, validate GPU
+startup times, and use actual multi-hour request arrivals and workloads.
+
 ## Routing policy comparison sweep (RR / WA / CWA)
 
 MalleServe exposes three clear research-facing names:
