@@ -1,5 +1,7 @@
 name: vllm_v1
 cluster: round_robin
+# MalleServe routing alias: rr, wa, cwa (null keeps native scheduler.cluster)
+routing_policy: null
 # Used only when cluster=kv_aware; safe for other routing policies.
 load_weight: 1.0
 cache_weight: 1.0
