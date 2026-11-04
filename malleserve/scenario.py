@@ -24,7 +24,8 @@ def merge(base: dict, override: dict) -> dict:
 
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
     from malleserve.tools.generate_native_schedule import generate
-    if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "transient"):
+    expected_policy = "fixed" if config["resources"]["mode"] == "fixed" else "transient"
+    if config["policy"]["name"] not in ((expected_policy,) if expected_policy == "fixed" else ("transient", "naive")):
         raise ValueError("Policy and resource mode mismatch")
     # Native Frontier handles final validation of its own CLI dataclasses.
     name = config["experiment"]["name"]
