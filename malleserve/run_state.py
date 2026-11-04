@@ -80,7 +80,14 @@ def fingerprint(config: dict, trace: Path, manifest: Path) -> str:
     payload = json.dumps(config, sort_keys=True, default=str).encode("utf-8")
     digest = hashlib.sha256()
     digest.update(payload)
-    for path in (trace, manifest):
+    files = [trace, manifest]
+    external_schedule = config.get("resources", {}).get("schedule_file")
+    if external_schedule:
+        source = resolve(external_schedule)
+        if not source.is_file():
+            raise FileNotFoundError(f"External schedule missing during fingerprint: {source}")
+        files.append(source)
+    for path in files:
         with path.open("rb") as file:
             for chunk in iter(lambda: file.read(1024 * 1024), b""):
                 digest.update(chunk)
