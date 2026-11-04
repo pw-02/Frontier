@@ -35,6 +35,17 @@ class LORClusterSchedulerConfig(BaseClusterSchedulerConfig):
 
 
 @dataclass
+class KVAwareClusterSchedulerConfig(BaseClusterSchedulerConfig):
+    # Prefill-equivalent token-work heuristic, not calibrated GPU latency.
+    load_weight: float = 1.0
+    decode_token_weight: float = 16.0
+
+    @staticmethod
+    def get_type():
+        return ClusterSchedulerType.KV_AWARE
+
+
+@dataclass
 class StickyRoundRobinClusterSchedulerConfig(BaseClusterSchedulerConfig):
     @staticmethod
     def get_type():
