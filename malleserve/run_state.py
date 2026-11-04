@@ -9,6 +9,22 @@ ROOT = Path(__file__).resolve().parents[1]
 SUCCESS = "run_complete.json"
 
 
+def experiment_output(config: dict) -> Path:
+    """Return the final, flattened output directory for one experiment."""
+    import re
+
+    mode = config["resources"]["mode"]
+    if mode not in ("fixed", "transient"):
+        raise ValueError(f"Unsupported resource mode: {mode}")
+    name = config["experiment"]["name"]
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        raise ValueError(f"Invalid experiment name: {name!r}")
+    model = re.sub(r"[^a-z0-9]+", "_", str(config["model"]["name"]).lower()).strip("_")
+    if not model:
+        raise ValueError("Model name cannot be empty")
+    return resolve("outputs/malleserve/runs") / mode / f"{name}_{model}"
+
+
 def resolve(path: str | Path) -> Path:
     value = Path(path)
     return value if value.is_absolute() else ROOT / value
