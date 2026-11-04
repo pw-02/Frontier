@@ -1,0 +1,5 @@
+# Sensitivity experiment, not empirically calibrated.
+label: norm_half
+decode_phase_attn_rope_calibration_scale: null
+decode_phase_input_layernorm_calibration_scale: 0.5
+decode_phase_post_attention_layernorm_calibration_scale: 0.5
