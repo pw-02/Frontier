@@ -38,6 +38,7 @@ class LORClusterSchedulerConfig(BaseClusterSchedulerConfig):
 class KVAwareClusterSchedulerConfig(BaseClusterSchedulerConfig):
     # Prefill-equivalent token-work heuristic, not calibrated GPU latency.
     load_weight: float = 1.0
+    cache_weight: float = 1.0
     decode_token_weight: float = 16.0
 
     @staticmethod
