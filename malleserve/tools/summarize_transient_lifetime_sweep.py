@@ -29,7 +29,10 @@ METRICS = {
 PATTERN = re.compile(
     r"^(?:fixed(?P<fixed>[48])_(?P<fixed_router>rr|wa|cwa)"
     r"|transient_l(?P<lifetime>\d+)_s(?P<startup>\d+)_"
-    r"(?P<recovery>baseline_recovery|ideal_recovery)_(?P<transient_router>rr|wa|cwa))_r12$"
+    r"(?P<recovery>baseline_recovery|ideal_recovery)_(?P<transient_router>rr|wa|cwa)"
+    r"|transient_no_reclamation_s(?P<no_startup>\\d+)_(?P<no_router>rr|wa|cwa)"
+    r"|transient_single_reclaim_t(?P<reclaim_at>\\d+)_s(?P<one_startup>\\d+)_"
+    r"(?P<one_recovery>baseline_recovery|ideal_recovery)_(?P<one_router>rr|wa|cwa))_r12$"
 )
 
 
@@ -76,13 +79,23 @@ def main() -> None:
                 continue
             info = match.groupdict()
             fixed = info["fixed"] is not None
-            routing = info["fixed_router"] if fixed else info["transient_router"]
-            configuration = ("Fixed " + info["fixed"] if fixed else
-                             info["recovery"].replace("_", " ").title() + " / " + info["lifetime"] + "s")
+            routing = (info["fixed_router"] or info["transient_router"]
+                       or info["no_router"] or info["one_router"])
+            if fixed:
+                configuration = "Fixed " + info["fixed"]
+            elif info["no_router"]:
+                configuration = "No Reclamation"
+            elif info["one_router"]:
+                configuration = ("Single Reclamation / " +
+                                 info["one_recovery"].replace("_", " ").title())
+            else:
+                configuration = info["recovery"].replace("_", " ").title() + " / " + info["lifetime"] + "s"
+            startup_value = info["startup"] or info["no_startup"] or info["one_startup"]
             row = {
                 "configuration": configuration, "routing": routing, "name": name,
-                "status": "MISSING", "startup_s": None if fixed else int(info["startup"]),
-                "lifetime_s": None if fixed else int(info["lifetime"]),
+                "status": "MISSING",
+                "startup_s": None if fixed else int(startup_value),
+                "lifetime_s": int(info["lifetime"]) if info["lifetime"] else None,
             }
             summary_file = folder / "malleserve_summary.json"
             completed = folder / "run_complete.json"
@@ -93,7 +106,7 @@ def main() -> None:
                 summary = json.loads(summary_file.read_text(encoding="utf-8"))
                 row.update({k: summary.get(v) for k, v in METRICS.items()})
                 if not fixed:
-                    extra = ready_gpu_seconds(folder / "availability.jsonl", float(info["startup"]))
+                    extra = ready_gpu_seconds(folder / "availability.jsonl", float(startup_value))
                     row["extra_ready_gpu_seconds"] = extra
                     row["mean_ready_gpus"] = (4.0 + extra / 330.0) if extra is not None else None
                     lifecycle_file = folder / "transient_lifecycle.json"
