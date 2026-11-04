@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from typing import List, Optional
 
 from frontier.config.base_poly_config import BasePolyConfig
@@ -116,6 +117,20 @@ class BaseExecutionTimePredictorConfig(BasePolyConfig):
     attention_prefill_batching_overhead_fraction: float = field(
         default=0.1,
         metadata={"help": "Attention prefill batching overhead fraction."},
+    )
+    # Experimental, decode-only operator sensitivity controls. None retains
+    # the existing prediction exactly; prefill and mixed batches are untouched.
+    decode_phase_attn_rope_calibration_scale: Optional[float] = field(
+        default=None,
+        metadata={"help": "Optional positive RoPE multiplier for pure decode batches only."},
+    )
+    decode_phase_input_layernorm_calibration_scale: Optional[float] = field(
+        default=None,
+        metadata={"help": "Optional positive input norm multiplier for pure decode batches only."},
+    )
+    decode_phase_post_attention_layernorm_calibration_scale: Optional[float] = field(
+        default=None,
+        metadata={"help": "Optional positive post-attention norm multiplier for pure decode batches only."},
     )
     attn_pre_proj_calibration_scale: float = field(
         default=1.0,
@@ -252,6 +267,9 @@ class BaseExecutionTimePredictorConfig(BasePolyConfig):
 
     def __post_init__(self) -> None:
         for field_name in (
+            "decode_phase_attn_rope_calibration_scale",
+            "decode_phase_input_layernorm_calibration_scale",
+            "decode_phase_post_attention_layernorm_calibration_scale",
             "attn_pre_proj_calibration_scale",
             "prefill_phase_attn_pre_proj_calibration_scale",
             "attn_post_proj_calibration_scale",
@@ -270,7 +288,7 @@ class BaseExecutionTimePredictorConfig(BasePolyConfig):
             if raw_value is None:
                 continue
             value = float(raw_value)
-            if value <= 0.0:
+            if not math.isfinite(value) or value <= 0.0:
                 raise ValueError(
                     f"{self.__class__.__name__}.{field_name} must be > 0, got={value!r}"
                 )
