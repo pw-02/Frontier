@@ -36,8 +36,15 @@ class JSQClusterScheduler(BaseClusterScheduler):
         if not candidates:
             raise ValueError("JSQ requires at least one eligible replica lane")
         minimum = min(loads.values())
-        tied = [lane for lane in candidates if loads[lane] == minimum]
-        return tied[cursor % len(tied)]
+        # Scan circularly over *all* lanes. Taking cursor % len(tied)
+        # reshuffles the tie set after each assignment (0,2,1,3 on
+        # four empty replicas), which is not round-robin tie-breaking.
+        start = cursor % len(candidates)
+        for offset in range(len(candidates)):
+            lane = candidates[(start + offset) % len(candidates)]
+            if loads[lane] == minimum:
+                return lane
+        raise AssertionError("Minimum load disappeared")
 
     def schedule(self) -> List[Tuple[int, Optional[int], Request]]:
         self.sort_requests()
@@ -55,11 +62,13 @@ class JSQClusterScheduler(BaseClusterScheduler):
         if not loads:
             return []
 
+        ordered_lanes = sorted(loads)
         placements: List[Tuple[int, Optional[int], Request]] = []
         while self._request_queue:
             target = self._choose_lane(loads, self._tie_cursor)
             request = self._request_queue.pop(0)
             placements.append((target[0], target[1], request))
             loads[target] += 1
-            self._tie_cursor += 1
+            # Next tie starts immediately after the selected lane.
+            self._tie_cursor = (ordered_lanes.index(target) + 1) % len(ordered_lanes)
         return placements
