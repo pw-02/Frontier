@@ -20,7 +20,7 @@ METRICS = {
 }
 PATTERN = re.compile(
     r"^(?:fixed(?P<fixed>8|16|32)_(?P<fixed_route>rr|wa|cwa)"
-    r"|large_s(?P<seed>\\d+)_(?P<recovery>baseline_recovery|ideal_recovery)_"
+    r"|large_s(?P<seed>\d+)_(?P<recovery>baseline_recovery|ideal_recovery)_"
     r"(?P<transient_route>rr|wa|cwa))_r34$"
 )
 
