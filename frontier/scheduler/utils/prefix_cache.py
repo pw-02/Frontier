@@ -42,10 +42,11 @@ def validate_prefix_cache_config(
         ClusterSchedulerType.STICKY_LOR,
         ClusterSchedulerType.ROUND_ROBIN,
         ClusterSchedulerType.LOR,
+        ClusterSchedulerType.KV_AWARE,
     }:
         raise ValueError(
             "Multi-replica prefix caching requires round_robin, lor, "
-            "sticky_round_robin, or sticky_lor routing. "
+            "kv_aware, sticky_round_robin, or sticky_lor routing. "
             f"Got {cluster_scheduler_type}."
         )
     if request_generator_config is None:
