@@ -1,4 +1,5 @@
 from frontier.scheduler.cluster_scheduler.lor_cluster_scheduler import LORClusterScheduler
+from frontier.scheduler.cluster_scheduler.kv_aware_cluster_scheduler import KVAwareClusterScheduler
 from frontier.scheduler.cluster_scheduler.random_cluster_scheduler import (
     RandomClusterScheduler,
 )
@@ -27,6 +28,7 @@ class ClusterSchedulerRegistry(BaseRegistry):
 ClusterSchedulerRegistry.register(ClusterSchedulerType.ROUND_ROBIN, RoundRobinClusterScheduler)
 ClusterSchedulerRegistry.register(ClusterSchedulerType.RANDOM, RandomClusterScheduler)
 ClusterSchedulerRegistry.register(ClusterSchedulerType.LOR, LORClusterScheduler)
+ClusterSchedulerRegistry.register(ClusterSchedulerType.KV_AWARE, KVAwareClusterScheduler)
 ClusterSchedulerRegistry.register(
     ClusterSchedulerType.STICKY_ROUND_ROBIN,
     StickyRoundRobinClusterScheduler,
