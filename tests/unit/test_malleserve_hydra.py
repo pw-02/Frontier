@@ -52,10 +52,12 @@ class HydraScenarioTests(unittest.TestCase):
             "resources=fixed4", "policy=fixed",
             "scheduler.cluster=kv_aware",
             "scheduler.load_weight=0.5",
+            "scheduler.cache_weight=0.0",
             "scheduler.decode_token_weight=12.0",
         ])
         self.assertEqual(cfg["scheduler"]["cluster"], "kv_aware")
         self.assertEqual(cfg["scheduler"]["load_weight"], 0.5)
+        self.assertEqual(cfg["scheduler"]["cache_weight"], 0.0)
         self.assertEqual(cfg["scheduler"]["decode_token_weight"], 12.0)
 
     def test_composable_overrides(self):
