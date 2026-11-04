@@ -98,6 +98,43 @@ including cases where the longer lifetime does not help. In particular,
 check `transient_lifecycle.json` for interrupted requests and
 `measured_still_outstanding_at_window_end` in the summary.
 
+## Additional reclamation controls at 12 RPS
+
+The original `baseline_recovery` means **full recomputation of interrupted
+requests following an abrupt transient-node reclaim**, not the Fixed 4
+baseline. `ideal_recovery` preserves committed work at zero transfer cost
+(an oracle, not a real migration implementation).
+
+To complement the already-completed 60s/180s lifetime experiments, run:
+
+```bash
+bash malleserve/tools/run_transient_controls.sh
+```
+
+This runs **nine additional cases** (three routing policies each):
+
+- `no_reclamation`: one extra four-GPU node becomes ready at t=40s and
+  remains active through the measurement and request-drain period; 0 reclaims.
+- `single_reclaim` + `baseline_recovery`: first extra node ready t=40s,
+  reclaimed abruptly at t=180s with full recomputation of interrupted work;
+  a different four-GPU node becomes ready at t=220s and stays online.
+- `single_reclaim` + `ideal_recovery`: identical availability schedule,
+  but preserves committed progress and KV context across the one reclaim.
+
+All runs use `mooncake_r12`, 4 persistent GPUs, 40s startup and unchanged
+router/predictor settings, and are stored alongside the existing study under
+`outputs/malleserve/runs/transient_lifetime_sweep_r12/`. The script
+automatically regenerates `transient_lifetime_comparison.csv` with these
+new controls. Existing fixed and rotating experiments are **not** rerun.
+
+These controls isolate the incremental effect of one reclamation under
+identical availability and routing settings. Do **not** treat no-reclamation
+as equal-capacity to the one-reclaim case: it has no 40s replacement gap and
+retains a warm KV cache. The earlier `observed_one_reclaim` debug scenario
+is retained separately; it uses an externally specified ready-time timeline
+and requires zero startup delay, so we do not mix it into this controlled
+40-second-startup comparison.
+
 ## KV-aware cluster routing (experimental)
 
 Use `scheduler.cluster=kv_aware` to place requests using both local prefix
