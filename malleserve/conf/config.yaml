@@ -9,6 +9,7 @@ defaults:
 
 experiment:
   skip_completed: true
+  group: null
   name: ${resources.label}_r${workload.rate}
 
 metrics:
