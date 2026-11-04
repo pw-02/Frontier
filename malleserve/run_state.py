@@ -22,7 +22,13 @@ def experiment_output(config: dict) -> Path:
     model = re.sub(r"[^a-z0-9]+", "_", str(config["model"]["name"]).lower()).strip("_")
     if not model:
         raise ValueError("Model name cannot be empty")
-    return resolve("outputs/malleserve/runs") / mode / f"{name}_{model}"
+    group = config["experiment"].get("group")
+    base = resolve("outputs/malleserve/runs")
+    if group is not None:
+        if not isinstance(group, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", group):
+            raise ValueError(f"Invalid experiment group: {group!r}")
+        base = base / group
+    return base / mode / f"{name}_{model}"
 
 
 def resolve(path: str | Path) -> Path:
