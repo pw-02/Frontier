@@ -116,6 +116,7 @@ from frontier.config.replica_config import ReplicaConfig
 from frontier.config.cluster_scheduler_config import (
     BaseClusterSchedulerConfig,
     LORClusterSchedulerConfig,
+    JSQClusterSchedulerConfig,
     RandomClusterSchedulerConfig,
     RoundRobinClusterSchedulerConfig,
     StickyLORClusterSchedulerConfig,
