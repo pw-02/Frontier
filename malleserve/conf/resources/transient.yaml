@@ -1,0 +1,9 @@
+label: transient
+mode: transient
+persistent_gpus: 4
+transient_gpus_per_node: 4
+candidate_nodes: 2
+node_lifetime_seconds: 60
+startup_seconds: 40
+duration_seconds: 330
+lifecycle_mode: baseline_recovery
