@@ -5,8 +5,8 @@ the ordinary Frontier batch-stage event engine and GPU predictor. It does not
 estimate request service duration itself.
 
 Initial scope is intentionally narrow: sequential, monolithic, single DP lane,
-single GPU/replica, no thinking rounds, no speculative decoding and naive full
-request replay on abrupt reclamation. Fail closed for unsupported settings.
+single GPU/replica, no thinking rounds, no speculative decoding and baseline full
+request recomputation on abrupt reclamation. Fail closed for unsupported settings.
 """
 from __future__ import annotations
 
@@ -150,8 +150,10 @@ class NativeTransientLifecycle:
         self.retries = 0
         self.lost_processed_tokens = 0
         self.stale_event_purges = 0
-        self.recovery_mode = str(getattr(config, "transient_recovery_mode", "naive"))
-        if self.recovery_mode not in ("naive", "ideal_recovery"):
+        self.recovery_mode = str(getattr(config, "transient_recovery_mode", "baseline_recovery"))
+        if self.recovery_mode == "baseline_recovery":  # compatibility with earlier runs
+            self.recovery_mode = "baseline_recovery"
+        if self.recovery_mode not in ("baseline_recovery", "ideal_recovery"):
             raise ValueError(f"Unsupported transient recovery mode: {self.recovery_mode}")
         self.oracle_restored_requests = 0
         self.oracle_restored_tokens = 0
