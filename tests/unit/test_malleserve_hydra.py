@@ -37,6 +37,44 @@ class HydraScenarioTests(unittest.TestCase):
         legacy = loaded(["resources=naive", "policy=naive"])
         self.assertEqual(legacy["resources"]["lifecycle_mode"], "naive")
 
+    def test_transient_lifetime_sweep_scenario(self):
+        from malleserve.tools.generate_native_schedule import generate
+        cfg = loaded([
+            "resources=transient", "policy=transient", "workload=mooncake_r12",
+            "resources.node_lifetime_seconds=180",
+            "resources.lifecycle_mode=ideal_recovery",
+            "scheduler.routing_policy=cwa",
+            "experiment.group=transient_lifetime_sweep_r12",
+            "experiment.name=transient_l180_s40_ideal_recovery_cwa_r12",
+        ])
+        self.assertEqual(cfg["workload"]["rate"], 12)
+        self.assertEqual(cfg["resources"]["node_lifetime_seconds"], 180)
+        self.assertEqual(
+            experiment_output(cfg).parts[-3:],
+            ("transient_lifetime_sweep_r12", "transient",
+             "transient_l180_s40_ideal_recovery_cwa_r12_qwen_qwen3_8b"),
+        )
+        events = generate(330, 180)
+        self.assertEqual(
+            [(e["timestamp"], e["action"]) for e in events],
+            [(0.0, "available"), (180, "reclaim"),
+             (180, "available"), (330, "reclaim")],
+        )
+
+    def test_transient_ready_gpu_exposure(self):
+        import json
+        import tempfile
+        from malleserve.tools.generate_native_schedule import generate
+        from malleserve.tools.summarize_transient_lifetime_sweep import ready_gpu_seconds
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / "availability.jsonl"
+            for lifetime, expected in ((60, 400.0), (180, 1000.0)):
+                path.write_text(
+                    "".join(json.dumps(e) + "\\n" for e in generate(330, lifetime)),
+                    encoding="utf-8",
+                )
+                self.assertEqual(ready_gpu_seconds(path, 40), expected)
+
     def test_fixed_resource_groups(self):
         for group, size in (("fixed3", 3), ("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
