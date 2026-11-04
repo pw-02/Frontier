@@ -1,4 +1,5 @@
 from frontier.scheduler.cluster_scheduler.lor_cluster_scheduler import LORClusterScheduler
+from frontier.scheduler.cluster_scheduler.jsq_cluster_scheduler import JSQClusterScheduler
 from frontier.scheduler.cluster_scheduler.random_cluster_scheduler import (
     RandomClusterScheduler,
 )
@@ -27,6 +28,7 @@ class ClusterSchedulerRegistry(BaseRegistry):
 ClusterSchedulerRegistry.register(ClusterSchedulerType.ROUND_ROBIN, RoundRobinClusterScheduler)
 ClusterSchedulerRegistry.register(ClusterSchedulerType.RANDOM, RandomClusterScheduler)
 ClusterSchedulerRegistry.register(ClusterSchedulerType.LOR, LORClusterScheduler)
+ClusterSchedulerRegistry.register(ClusterSchedulerType.JSQ, JSQClusterScheduler)
 ClusterSchedulerRegistry.register(
     ClusterSchedulerType.STICKY_ROUND_ROBIN,
     StickyRoundRobinClusterScheduler,
