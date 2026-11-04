@@ -35,6 +35,13 @@ class LORClusterSchedulerConfig(BaseClusterSchedulerConfig):
 
 
 @dataclass
+class JSQClusterSchedulerConfig(BaseClusterSchedulerConfig):
+    @staticmethod
+    def get_type():
+        return ClusterSchedulerType.JSQ
+
+
+@dataclass
 class StickyRoundRobinClusterSchedulerConfig(BaseClusterSchedulerConfig):
     @staticmethod
     def get_type():
