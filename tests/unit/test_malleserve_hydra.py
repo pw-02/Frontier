@@ -47,6 +47,17 @@ class HydraScenarioTests(unittest.TestCase):
             ("runs", "transient", "naive_r10_qwen_qwen3_8b"),
         )
 
+    def test_kv_aware_routing_config(self):
+        cfg = loaded([
+            "resources=fixed4", "policy=fixed",
+            "scheduler.cluster=kv_aware",
+            "scheduler.load_weight=0.5",
+            "scheduler.decode_token_weight=12.0",
+        ])
+        self.assertEqual(cfg["scheduler"]["cluster"], "kv_aware")
+        self.assertEqual(cfg["scheduler"]["load_weight"], 0.5)
+        self.assertEqual(cfg["scheduler"]["decode_token_weight"], 12.0)
+
     def test_composable_overrides(self):
         cfg = loaded(["workload=mooncake_r2", "resources.startup_seconds=0",
                       "scheduler.max_tokens_in_batch=1024"])
