@@ -5,6 +5,7 @@ from frontier.scheduler.cluster_scheduler.cluster_scheduler_registry import (
     ClusterSchedulerRegistry,
 )
 from frontier.scheduler.cluster_scheduler.lor_cluster_scheduler import LORClusterScheduler
+from frontier.scheduler.cluster_scheduler.kv_aware_cluster_scheduler import KVAwareClusterScheduler
 from frontier.scheduler.cluster_scheduler.random_cluster_scheduler import (
     RandomClusterScheduler,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "BaseClusterScheduler",
     "ClusterSchedulerRegistry",
     "LORClusterScheduler",
+    "KVAwareClusterScheduler",
     "RandomClusterScheduler",
     "RoundRobinClusterScheduler",
     "StickyLORClusterScheduler",
