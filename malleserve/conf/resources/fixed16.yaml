@@ -1,0 +1,3 @@
+label: fixed16
+mode: fixed
+gpus: 16
