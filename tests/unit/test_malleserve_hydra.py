@@ -38,7 +38,7 @@ class HydraScenarioTests(unittest.TestCase):
         self.assertEqual(legacy["resources"]["lifecycle_mode"], "naive")
 
     def test_fixed_resource_groups(self):
-        for group, size in (("fixed4", 4), ("fixed8", 8)):
+        for group, size in (("fixed3", 3), ("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
             self.assertEqual(cfg["resources"]["gpus"], size)
             self.assertEqual(cfg["resources"]["mode"], "fixed")
