@@ -56,6 +56,33 @@ class HydraScenarioTests(unittest.TestCase):
             ("runs", "transient", "transient_r10_qwen_qwen3_8b"),
         )
 
+    def test_routing_aliases_and_grouped_paths(self):
+        from malleserve.scenario import resolve_routing_policy
+        expected = {
+            "rr": ("round_robin", 1.0),
+            "wa": ("kv_aware", 0.0),
+            "cwa": ("kv_aware", 1.0),
+        }
+        for alias, native in expected.items():
+            cfg = loaded([
+                "resources=fixed4", "policy=fixed",
+                f"scheduler.routing_policy={alias}",
+                "experiment.group=routing_policy_sweep",
+                f"experiment.name=fixed4_{alias}_r10",
+            ])
+            self.assertEqual(resolve_routing_policy(cfg["scheduler"]), native)
+            self.assertEqual(
+                experiment_output(cfg).parts[-3:],
+                ("routing_policy_sweep", "fixed", f"fixed4_{alias}_r10_qwen_qwen3_8b"),
+            )
+
+    def test_alias_validation_and_legacy_routing(self):
+        from malleserve.scenario import resolve_routing_policy
+        self.assertEqual(resolve_routing_policy({"cluster": "round_robin"}), ("round_robin", 1.0))
+        self.assertEqual(resolve_routing_policy({"cluster": "kv_aware", "cache_weight": 0.5}), ("kv_aware", 0.5))
+        with self.assertRaises(ValueError):
+            resolve_routing_policy({"routing_policy": "invalid", "cluster": "round_robin"})
+
     def test_kv_aware_routing_config(self):
         cfg = loaded([
             "resources=fixed4", "policy=fixed",
