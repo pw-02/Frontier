@@ -103,6 +103,48 @@ class HydraScenarioTests(unittest.TestCase):
                 self.assertEqual(cfg["resources"]["reclaim_at_seconds"], 180)
                 self.assertEqual(cfg["resources"]["recovery_mode"], recovery)
 
+    def test_large_scale_overlapping_availability(self):
+        from malleserve.tools.generate_cluster_availability import generate
+        from malleserve.tools.summarize_large_scale_sweep import PATTERN
+        from frontier.transient_lifecycle import read_availability
+        import json
+        import tempfile
+
+        cfg = loaded([
+            "resources=transient_large", "policy=transient",
+            "workload=mooncake_r34",
+            "resources.schedule_seed=19", "scheduler.routing_policy=cwa",
+            "experiment.group=large_scale_hpc_r34",
+            "experiment.name=large_s19_baseline_recovery_cwa_r34",
+        ])
+        self.assertEqual(cfg["resources"]["persistent_gpus"], 8)
+        self.assertEqual(cfg["resources"]["candidate_nodes"], 16)
+        self.assertEqual(cfg["workload"]["rate"], 34)
+        self.assertIsNotNone(PATTERN.fullmatch(cfg["experiment"]["name"]))
+        schedule = generate(duration=330, nodes=16, seed=19)
+        self.assertEqual(schedule, generate(duration=330, nodes=16, seed=19))
+        self.assertNotEqual(schedule, generate(duration=330, nodes=16, seed=20))
+        self.assertEqual(len({e["node_id"] for e in schedule}), 16)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_text("".join(json.dumps(e) + "\n" for e in schedule),
+                            encoding="utf-8")
+            parsed = read_availability(str(path))
+        self.assertEqual(len(parsed), len(schedule))
+        self.assertIsNotNone(PATTERN.fullmatch("fixed32_wa_r34"))
+
+    def test_invalid_large_scale_parameters(self):
+        from malleserve.tools.generate_cluster_availability import generate
+        for overrides in (
+            {"nodes": 0}, {"duration": -1},
+            {"min_lifetime": 300, "max_lifetime": 90},
+            {"initial_spread": 330},
+        ):
+            args = {"duration": 330, "nodes": 16}
+            args.update(overrides)
+            with self.assertRaises(ValueError):
+                generate(**args)
+
     def test_fixed_resource_groups(self):
         for group, size in (("fixed3", 3), ("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
