@@ -111,12 +111,18 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         else:
             raise ValueError(f"Unknown lifecycle_mode: {lifecycle_mode}")
         schedule.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
+        recovery_mode = (str(resource["recovery_mode"])
+                         if lifecycle_mode == "single_reclaim"
+                         else lifecycle_mode)
+        if recovery_mode not in ("baseline_recovery", "ideal_recovery",
+                                 "no_reclamation", "observed_one_reclaim", "naive"):
+            raise ValueError(f"Unsupported recovery_mode: {recovery_mode}")
         transient_args = ["--transient_schedule_file", str(schedule),
              "--transient_persistent_replicas", str(resource["persistent_gpus"]),
              "--transient_replicas_per_node", str(resource["transient_gpus_per_node"]),
              "--transient_startup_seconds", str(resource["startup_seconds"]),
              "--transient_recovery_mode", (
-                 "ideal_recovery" if lifecycle_mode == "ideal_recovery" else "baseline_recovery")]
+                 "ideal_recovery" if recovery_mode == "ideal_recovery" else "baseline_recovery")]
     else:
         raise ValueError("Invalid resource mode")
     calibration = config.get("calibration", {})
