@@ -30,8 +30,8 @@ PATTERN = re.compile(
     r"^(?:fixed(?P<fixed>[48])_(?P<fixed_router>rr|wa|cwa)"
     r"|transient_l(?P<lifetime>\d+)_s(?P<startup>\d+)_"
     r"(?P<recovery>baseline_recovery|ideal_recovery)_(?P<transient_router>rr|wa|cwa)"
-    r"|transient_no_reclamation_s(?P<no_startup>\\d+)_(?P<no_router>rr|wa|cwa)"
-    r"|transient_single_reclaim_t(?P<reclaim_at>\\d+)_s(?P<one_startup>\\d+)_"
+    r"|transient_no_reclamation_s(?P<no_startup>\d+)_(?P<no_router>rr|wa|cwa)"
+    r"|transient_single_reclaim_t(?P<reclaim_at>\d+)_s(?P<one_startup>\d+)_"
     r"(?P<one_recovery>baseline_recovery|ideal_recovery)_(?P<one_router>rr|wa|cwa))_r12$"
 )
 
