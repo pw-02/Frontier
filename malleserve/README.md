@@ -23,6 +23,34 @@ Set a breakpoint in `frontier/transient_lifecycle.py` or `frontier/simulator.py`
 python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=baseline_s${resources.startup_seconds}'
 ```
 
+## Routing policy comparison sweep (RR / WA / CWA)
+
+MalleServe exposes three clear research-facing names:
+
+- `rr`: Round Robin (native `round_robin`).
+- `wa`: Workload-Aware; outstanding prefill/decode work, no incoming-request cache preference (native `kv_aware`, `cache_weight=0`).
+- `cwa`: Cache + Workload-Aware; outstanding work plus prompt-prefix cache locality (native `kv_aware`, `cache_weight=1`).
+
+Specify one using `scheduler.routing_policy=rr|wa|cwa`. The original
+`scheduler.cluster` and `scheduler.cache_weight` overrides continue to work
+when `scheduler.routing_policy=null` (the default). If an alias is selected it
+takes precedence over those legacy knobs.
+
+Run all 12 controlled Qwen3-8B, Mooncake 10-RPS scenarios (3 routing policies
+× fixed4, fixed8, baseline recovery, ideal recovery):
+
+```bash
+bash malleserve/tools/run_routing_policy_sweep.sh
+```
+
+Outputs are organized under
+`outputs/malleserve/runs/routing_policy_sweep/{fixed,transient}/<experiment>_qwen_qwen3_8b/`.
+Setting `experiment.group=routing_policy_sweep` changes only the result
+directory. Without `experiment.group`, older result paths are unchanged.
+The script uses distinct names and does not move or overwrite ongoing
+experiments in the original `runs/fixed` and `runs/transient` folders.
+Runs with the same completed fingerprint are skipped on re-execution.
+
 ## KV-aware cluster routing (experimental)
 
 Use `scheduler.cluster=kv_aware` to place requests using both local prefix
