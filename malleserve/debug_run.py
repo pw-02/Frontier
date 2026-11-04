@@ -15,14 +15,14 @@ from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 
 from malleserve.scenario import prepare
-from malleserve.run_state import ensure_trace, fingerprint, is_complete, mark_complete, resolve, SUCCESS
+from malleserve.run_state import ensure_trace, fingerprint, is_complete, mark_complete, experiment_output
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main(scenario: dict) -> None:
     trace, manifest = ensure_trace(scenario["workload"], int(scenario["scheduler"]["block_size"]))
-    output = resolve("outputs/malleserve/runs") / scenario["experiment"]["name"]
+    output = experiment_output(scenario)
     identity = fingerprint(scenario, trace, manifest)
     if scenario["experiment"].get("skip_completed", True) and is_complete(output, identity):
         print(f"[MalleServe] SKIP complete: {output}", flush=True)
