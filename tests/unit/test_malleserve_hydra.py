@@ -70,7 +70,7 @@ class HydraScenarioTests(unittest.TestCase):
             path = Path(temp) / "availability.jsonl"
             for lifetime, expected in ((60, 400.0), (180, 1000.0)):
                 path.write_text(
-                    "".join(json.dumps(e) + "\\n" for e in generate(330, lifetime)),
+                    "".join(json.dumps(e) + "\n" for e in generate(330, lifetime)),
                     encoding="utf-8",
                 )
                 self.assertEqual(ready_gpu_seconds(path, 40), expected)
