@@ -151,7 +151,7 @@ class NativeTransientLifecycle:
         self.lost_processed_tokens = 0
         self.stale_event_purges = 0
         self.recovery_mode = str(getattr(config, "transient_recovery_mode", "baseline_recovery"))
-        if self.recovery_mode == "baseline_recovery":  # compatibility with earlier runs
+        if self.recovery_mode == "naive":  # compatibility with earlier runs
             self.recovery_mode = "baseline_recovery"
         if self.recovery_mode not in ("baseline_recovery", "ideal_recovery"):
             raise ValueError(f"Unsupported transient recovery mode: {self.recovery_mode}")
@@ -348,7 +348,7 @@ class NativeTransientLifecycle:
                 prefill_completed_at = getattr(req, "_prefill_completed_at", 0)
                 first_decode_completed_at = getattr(req, "_first_decode_token_completed_at", 0)
                 decode_first_completed_at = getattr(req, "_decode_first_token_completed_at", 0)
-                if self.recovery_mode == "naive":
+                if self.recovery_mode == "baseline_recovery":
                     self.lost_processed_tokens += committed
                 req._num_prefill_tokens = original_prompt
                 req._num_decode_tokens = original_output
