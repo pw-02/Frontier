@@ -54,6 +54,50 @@ Runs with the same completed fingerprint are skipped on re-execution.
 The summary command writes `routing_policy_comparison.csv` to the group folder
 for subsequent P50/P95/P99 plots and flags unfinished runs as MISSING.
 
+## Transient lifetime and workload-pressure study (12 RPS)
+
+This controlled sensitivity study tests the hypothesis that 60-second GPU
+fragments with 40-second startup offer too little useful capacity. It uses the
+*same Mooncake 12-RPS trace* for all policies. It does **not** modify the
+previous 10-RPS routing sweep or claim these illustrative node lifetimes
+represent measured Polaris availability.
+
+Run the default 18 comparisons (fixed 4/8 with RR/WA/CWA; transient 60s/180s
+with Baseline/Ideal Recovery and RR/WA/CWA):
+
+```bash
+bash malleserve/tools/run_transient_lifetime_sweep.sh
+python -m malleserve.tools.summarize_transient_lifetime_sweep
+```
+
+To add a third 300-second fragment case, keeping the same fixed controls:
+
+```bash
+LIFETIMES="60 180 300" bash malleserve/tools/run_transient_lifetime_sweep.sh
+python -m malleserve.tools.summarize_transient_lifetime_sweep
+```
+
+Outputs stay under `outputs/malleserve/runs/transient_lifetime_sweep_r12/`,
+separately from earlier experiments. The aggregated
+`transient_lifetime_comparison.csv` includes P50/P95/P99, TTFT, completion
+throughput, outstanding requests, recovery counters, and the number of
+**extra ready GPU-seconds** derived from each run's actual availability trace.
+
+For the 330-second schedule at 40-second startup, the 60-second fragments
+provide 100 seconds of 4 extra ready GPUs (average 5.21 ready GPUs total);
+180-second fragments provide 250 seconds of 4 extra ready GPUs (average 7.03).
+Thus different lifetimes change both GPU exposure and reclamation frequency;
+compare RR/WA/CWA **within** a lifetime to isolate routing, and compare
+lifetimes to understand capacity viability. Fixed 8 remains an always-ready
+capacity reference, not an equal-exposure control. The original 12-RPS trace
+has 30 seconds warmup and 300 seconds of measurement arrivals.
+
+This is an experimental sensitivity analysis, not a cherry-picked replacement
+for the existing baseline; report both 60-second and 180-second outcomes,
+including cases where the longer lifetime does not help. In particular,
+check `transient_lifecycle.json` for interrupted requests and
+`measured_still_outstanding_at_window_end` in the summary.
+
 ## KV-aware cluster routing (experimental)
 
 Use `scheduler.cluster=kv_aware` to place requests using both local prefix
