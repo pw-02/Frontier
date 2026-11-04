@@ -51,7 +51,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         if (resource.get("lifecycle_mode") != "observed_one_reclaim"
                 and int(resource["candidate_nodes"]) != 2):
             raise ValueError("Current rotation generator supports 2 candidate nodes")
-        lifecycle_mode = str(resource.get("lifecycle_mode", "naive"))
+        lifecycle_mode = str(resource.get("lifecycle_mode", "baseline_recovery"))
         candidate_count = (1 if lifecycle_mode in ("no_reclamation", "observed_one_reclaim")
                            else int(resource["candidate_nodes"]))
         count = int(resource["persistent_gpus"]) + (
