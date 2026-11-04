@@ -109,12 +109,22 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         sensitivity_args.extend([
             "--random_forrest_execution_time_predictor_config_" + key, str(value)
         ])
+    kv_routing_args = []
+    if str(sched["cluster"]) == "kv_aware":
+        for key, default in (("load_weight", 1.0), ("decode_token_weight", 16.0)):
+            value = float(sched.get(key, default))
+            if not math.isfinite(value) or value < 0:
+                raise ValueError(f"Invalid KV-aware routing {key}={value!r}")
+            kv_routing_args.extend([
+                "--kv_aware_cluster_scheduler_config_" + key, str(value)
+            ])
     args = [
         "--simulation_mode", "online",
         "--sys_arch", "co-location",
         "--cc_backend_config_type", "analytical",
         "--cluster_config_num_replicas", str(count),
         "--cluster_scheduler_config_type", str(sched["cluster"]),
+        *kv_routing_args,
         "--replica_config_model_name", str(model["name"]),
         "--replica_config_device", str(model["device"]),
         "--replica_config_attn_tensor_parallel_size", "1",
