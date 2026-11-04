@@ -5125,6 +5125,19 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
 
         return False
 
+    def _apply_optional_pure_decode_operator_scale(
+        self, batch: Batch, raw_time: float, field_name: str
+    ) -> float:
+        """Apply an opt-in sensitivity multiplier only to pure decode batches.
+
+        The experiment must not alter prefill, mixed batches or default timings.
+        A missing config value is the identity operation.
+        """
+        if batch.num_prefill_tokens != 0 or batch.num_decode_tokens <= 0:
+            return raw_time
+        scale = getattr(self._config, field_name, None)
+        return raw_time if scale is None else raw_time * float(scale)
+
     def _get_attention_layer_pre_proj_execution_time(self, batch: Batch) -> float:
         if not self._supports_operation("attn_pre_proj"):
             raise ValueError(
@@ -5234,10 +5247,13 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                 f"input layernorm operation not supported for cluster {self._cluster_type}"
             )
         effective_tokens = batch.get_effective_total_tokens_rounded(self._cluster_type)
-        return self._get_prediction_for_features(
+        raw_time = self._get_prediction_for_features(
             "input_layernorm",
             {"num_tokens": effective_tokens},
             feature_names=("num_tokens",),
+        )
+        return self._apply_optional_pure_decode_operator_scale(
+            batch, raw_time, "decode_phase_input_layernorm_calibration_scale"
         )
 
     def _get_mlp_norm_layer_act_execution_time(self, batch: Batch) -> float:
@@ -5250,10 +5266,13 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                 f"post-attention layernorm operation not supported for cluster {self._cluster_type}"
             )
         effective_tokens = batch.get_effective_total_tokens_rounded(self._cluster_type)
-        return self._get_prediction_for_features(
+        raw_time = self._get_prediction_for_features(
             "post_attention_layernorm",
             {"num_tokens": effective_tokens},
             feature_names=("num_tokens",),
+        )
+        return self._apply_optional_pure_decode_operator_scale(
+            batch, raw_time, "decode_phase_post_attention_layernorm_calibration_scale"
         )
 
     def _get_add_layer_act_execution_time(self, batch: Batch) -> float:
@@ -6324,10 +6343,13 @@ class SklearnExecutionTimePredictor(KernelCountTraining, KernelGapPricing, BaseE
                 f"attention rope prediction cache not found for cluster {self._cluster_type}"
             )
         effective_tokens = batch.get_effective_total_tokens_rounded(self._cluster_type)
-        return self._get_prediction_for_features(
+        raw_time = self._get_prediction_for_features(
             "attn_rope",
             {"num_tokens": effective_tokens},
             feature_names=("num_tokens",),
+        )
+        return self._apply_optional_pure_decode_operator_scale(
+            batch, raw_time, "decode_phase_attn_rope_calibration_scale"
         )
 
     def _get_attention_kv_cache_save_execution_time(self, batch: Batch) -> float:
