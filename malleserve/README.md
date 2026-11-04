@@ -23,6 +23,48 @@ Set a breakpoint in `frontier/transient_lifecycle.py` or `frontier/simulator.py`
 python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=naive_s${resources.startup_seconds}'
 ```
 
+## KV-aware cluster routing (experimental)
+
+Use `scheduler.cluster=kv_aware` to place requests using both local prefix
+cache overlap and the worker's outstanding token work. This reuses the
+existing vLLM V1 replica scheduler and per-worker KV block pool. It does
+**not** move KV state between workers or change simulated GPU execution.
+
+```bash
+python -m malleserve.debug_run \
+  resources=fixed4 policy=fixed workload=mooncake_r12 \
+  scheduler.cluster=kv_aware \
+  scheduler.load_weight=1.0 scheduler.decode_token_weight=16.0 \
+  experiment.name=fixed4_r12_kv_aware
+```
+
+The routing heuristic minimises (in prefill-equivalent tokens):
+
+```text
+new_request_uncached_prefill_tokens +
+  load_weight * (outstanding_prefill_tokens +
+                 decode_token_weight * outstanding_decode_tokens)
+```
+
+Outstanding work includes both **waiting and running** requests. Estimates
+come from current request progress and cache-block identities; they are
+not a calibrated latency or service-time predictor. The read-only cache
+probe does not update cache-hit statistics, allocate blocks, or imply
+that KV state is shared. When multiple arrivals are assigned in one
+event, projected work is updated between placements. Ties use replica
+ID order. Under native transient lifecycle only ready workers are eligible;
+cache state on reclaimed workers is reset by the existing lifecycle.
+
+Keep experiment names distinct for `round_robin`, `lor`, and
+`kv_aware` comparisons. Because their routing differs, cache hits and
+batch composition may differ even with identical source traces.
+
+Run targeted regression tests:
+
+```bash
+python -m unittest tests.unit.test_kv_aware_cluster_scheduler -v
+```
+
 ## Workloads
 
 Convert prepared Mooncake JSON to a request trace CSV and matching manifest:
