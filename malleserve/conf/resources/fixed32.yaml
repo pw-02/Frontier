@@ -1,0 +1,3 @@
+label: fixed32
+mode: fixed
+gpus: 32
