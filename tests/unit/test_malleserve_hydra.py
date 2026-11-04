@@ -29,6 +29,14 @@ class HydraScenarioTests(unittest.TestCase):
         self.assertEqual(cfg["resources"]["lifecycle_mode"], "baseline_recovery")
         self.assertEqual(cfg["experiment"]["name"], "transient_r10")
 
+    def test_recovery_modes_compose(self):
+        baseline = loaded(["resources.lifecycle_mode=baseline_recovery"])
+        ideal = loaded(["resources.lifecycle_mode=ideal_recovery"])
+        self.assertEqual(baseline["resources"]["lifecycle_mode"], "baseline_recovery")
+        self.assertEqual(ideal["resources"]["lifecycle_mode"], "ideal_recovery")
+        legacy = loaded(["resources=naive", "policy=naive"])
+        self.assertEqual(legacy["resources"]["lifecycle_mode"], "naive")
+
     def test_fixed_resource_groups(self):
         for group, size in (("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
