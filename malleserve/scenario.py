@@ -111,7 +111,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         ])
     kv_routing_args = []
     if str(sched["cluster"]) == "kv_aware":
-        for key, default in (("load_weight", 1.0), ("decode_token_weight", 16.0)):
+        for key, default in (("load_weight", 1.0), ("cache_weight", 1.0), ("decode_token_weight", 16.0)):
             value = float(sched.get(key, default))
             if not math.isfinite(value) or value < 0:
                 raise ValueError(f"Invalid KV-aware routing {key}={value!r}")
