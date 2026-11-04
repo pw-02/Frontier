@@ -90,6 +90,24 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
                  "ideal_recovery" if lifecycle_mode == "ideal_recovery" else "naive")]
     else:
         raise ValueError("Invalid resource mode")
+    calibration = config.get("calibration", {})
+    sensitivity_names = (
+        "decode_phase_attn_rope_calibration_scale",
+        "decode_phase_input_layernorm_calibration_scale",
+        "decode_phase_post_attention_layernorm_calibration_scale",
+    )
+    import math
+    sensitivity_args = []
+    for key in sensitivity_names:
+        value = calibration.get(key)
+        if value is None:
+            continue
+        value = float(value)
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"Invalid experimental decode calibration {key}={value!r}")
+        sensitivity_args.extend([
+            "--random_forrest_execution_time_predictor_config_" + key, str(value)
+        ])
     args = [
         "--simulation_mode", "online",
         "--sys_arch", "co-location",
@@ -120,6 +138,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         str(model["linear_profile"]),
         "--random_forrest_execution_time_predictor_config_atten_kernel_only_input_file",
         str(model["attention_kernel_profile"]),
+        *sensitivity_args,
         "--metrics_config_output_dir", str(out),
         "--metrics_config_run_id", name,
         "--metrics_config_write_metrics",
