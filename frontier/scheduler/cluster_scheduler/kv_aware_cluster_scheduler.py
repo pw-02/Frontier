@@ -21,7 +21,7 @@ class KVAwareClusterScheduler(BaseClusterScheduler):
     """Choose a ready worker minimising prefill miss + outstanding token work.
 
     Cost is in *prefill-equivalent tokens*:
-        missing_prompt_tokens
+        cache_weight * missing_prompt_tokens
         + load_weight * (
             worker_pending_prefill_tokens
             + decode_token_weight * worker_pending_decode_tokens
@@ -41,11 +41,13 @@ class KVAwareClusterScheduler(BaseClusterScheduler):
         if self._replica_dp_size != 1:
             raise ValueError("kv_aware requires one attention-DP lane per replica")
         self._load_weight = float(self._config.cluster_scheduler_config.load_weight)
+        self._cache_weight = float(self._config.cluster_scheduler_config.cache_weight)
         self._decode_token_weight = float(
             self._config.cluster_scheduler_config.decode_token_weight
         )
         for name, weight in (
             ("load_weight", self._load_weight),
+            ("cache_weight", self._cache_weight),
             ("decode_token_weight", self._decode_token_weight),
         ):
             if not math.isfinite(weight) or weight < 0:
@@ -85,7 +87,7 @@ class KVAwareClusterScheduler(BaseClusterScheduler):
                     state["prefill_tokens"]
                     + self._decode_token_weight * state["decode_tokens"]
                 )
-                return (missing + self._load_weight * outstanding_work, replica_id)
+                return (self._cache_weight * missing + self._load_weight * outstanding_work, replica_id)
 
             target = min(lanes, key=cost)
             self._request_queue.pop(0)
