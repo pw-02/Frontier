@@ -1,0 +1,17 @@
+label: transient_large
+mode: transient
+persistent_gpus: 8
+transient_gpus_per_node: 4
+candidate_nodes: 16
+schedule_kind: synthetic_overlapping
+schedule_file: null
+schedule_seed: 7
+min_lifetime_seconds: 90
+max_lifetime_seconds: 240
+min_downtime_seconds: 20
+max_downtime_seconds: 90
+initial_spread_seconds: 90
+node_lifetime_seconds: 180
+startup_seconds: 40
+duration_seconds: 330
+lifecycle_mode: baseline_recovery
