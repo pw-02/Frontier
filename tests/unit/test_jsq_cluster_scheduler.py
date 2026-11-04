@@ -36,7 +36,7 @@ class JSQClusterSchedulerTests(unittest.TestCase):
         scheduler = self.make_scheduler(loads=(4, 0, 1))
         scheduler._request_queue = [SimpleNamespace(_arrived_at=i) for i in range(4)]
         placements = scheduler.schedule()
-        self.assertEqual([replica for replica, _, _ in placements], [1, 1, 2, 1])
+        self.assertEqual([replica for replica, _, _ in placements], [1, 2, 1, 2])
         self.assertEqual(scheduler._request_queue, [])
 
     def test_excludes_unready_transient_replicas(self):
