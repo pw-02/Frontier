@@ -1,4 +1,4 @@
-- resources=fixed8
+- resources=fixed4
 - policy=fixed
-- workload=mooncake_r10
-- experiment.name=baseline_fixed8_r10
+- calibration=combined_half
+- experiment.name=fixed4_r10_combined_half

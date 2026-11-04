@@ -7,15 +7,20 @@ workload:
   measurement_seconds: 300
   max_output_tokens: 128
 resources:
-  label: fixed8
+  label: fixed4
   mode: fixed
-  gpus: 8
+  gpus: 4
 model:
   name: Qwen/Qwen3-8B
   device: a100
   attention_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_calibrated.csv
   linear_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv
   attention_kernel_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_kernel_only.csv
+calibration:
+  label: combined_half
+  decode_phase_attn_rope_calibration_scale: 0.5
+  decode_phase_input_layernorm_calibration_scale: 0.5
+  decode_phase_post_attention_layernorm_calibration_scale: 0.5
 scheduler:
   name: vllm_v1
   cluster: round_robin
@@ -30,6 +35,6 @@ policy:
   name: fixed
 experiment:
   skip_completed: true
-  name: baseline_fixed8_r10
+  name: fixed4_r10_combined_half
 metrics:
   slo_seconds: 30

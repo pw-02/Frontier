@@ -112,14 +112,14 @@ hydra:
     hydra:
     - hydra.mode=RUN
     task:
-    - resources=fixed8
+    - resources=fixed4
     - policy=fixed
-    - workload=mooncake_r10
-    - experiment.name=baseline_fixed8_r10
+    - calibration=combined_half
+    - experiment.name=fixed4_r10_combined_half
   job:
     name: debug_run
     chdir: false
-    override_dirname: experiment.name=baseline_fixed8_r10,policy=fixed,resources=fixed8,workload=mooncake_r10
+    override_dirname: calibration=combined_half,experiment.name=fixed4_r10_combined_half,policy=fixed,resources=fixed4
     id: ???
     num: ???
     config_name: config
@@ -148,8 +148,9 @@ hydra:
     choices:
       policy: fixed
       scheduler: vllm_v1
+      calibration: combined_half
       model: qwen3_8b_a100
-      resources: fixed8
+      resources: fixed4
       workload: mooncake_r10
       hydra/env: default
       hydra/callbacks: null
