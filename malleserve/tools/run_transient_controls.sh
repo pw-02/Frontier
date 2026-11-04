@@ -26,7 +26,7 @@ for routing in rr wa cwa; do
       scheduler.load_weight=1.0 scheduler.decode_token_weight=16.0 \
       calibration=baseline \
       experiment.group="${group}" experiment.name="${name}" \
-      "resources.recovery_mode=${recovery}"
+      "+resources.recovery_mode=${recovery}"
   done
 done
 python -m malleserve.tools.summarize_transient_lifetime_sweep
