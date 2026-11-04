@@ -17,7 +17,7 @@ def validate_prefix_cache_config(
     cluster_scheduler_config: Any,
     request_generator_config: Any,
 ) -> None:
-    """Fail fast when prefix caching lacks sticky routing or trace metadata."""
+    """Validate prefix-cache routing compatibility and trace metadata."""
 
     if not bool(getattr(replica_scheduler_config, "enable_prefix_caching", False)):
         return
@@ -41,9 +41,11 @@ def validate_prefix_cache_config(
         ClusterSchedulerType.STICKY_ROUND_ROBIN,
         ClusterSchedulerType.STICKY_LOR,
         ClusterSchedulerType.ROUND_ROBIN,
+        ClusterSchedulerType.LOR,
     }:
         raise ValueError(
-            "Multi-replica prefix caching requires a sticky cluster scheduler. "
+            "Multi-replica prefix caching requires round_robin, lor, "
+            "sticky_round_robin, or sticky_lor routing. "
             f"Got {cluster_scheduler_type}."
         )
     if request_generator_config is None:
