@@ -24,7 +24,7 @@ def merge(base: dict, override: dict) -> dict:
 
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
     from malleserve.tools.generate_native_schedule import generate
-    if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "naive"):
+    if config["policy"]["name"] != ("fixed" if config["resources"]["mode"] == "fixed" else "transient"):
         raise ValueError("Policy and resource mode mismatch")
     # Native Frontier handles final validation of its own CLI dataclasses.
     name = config["experiment"]["name"]
@@ -76,7 +76,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
                 {"timestamp": reclaim_at, "node_id": "transient-0", "action": "reclaim"},
                 {"timestamp": ready_again_at, "node_id": "transient-0", "action": "available"},
             ]
-        elif lifecycle_mode == "naive":
+        elif lifecycle_mode in ("baseline_recovery", "naive"):
             events = generate(duration, lifetime)
         elif lifecycle_mode == "ideal_recovery":
             events = generate(duration, lifetime)
@@ -88,7 +88,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
              "--transient_replicas_per_node", str(resource["transient_gpus_per_node"]),
              "--transient_startup_seconds", str(resource["startup_seconds"]),
              "--transient_recovery_mode", (
-                 "ideal_recovery" if lifecycle_mode == "ideal_recovery" else "naive")]
+                 "ideal_recovery" if lifecycle_mode == "ideal_recovery" else "baseline_recovery")]
     else:
         raise ValueError("Invalid resource mode")
     calibration = config.get("calibration", {})
