@@ -92,8 +92,13 @@ class NativeTransientLifecycle:
         from frontier.scheduler.cluster_scheduler.round_robin_cluster_scheduler import (
             RoundRobinClusterScheduler,
         )
-        if type(self.scheduler) is not RoundRobinClusterScheduler:
-            raise ValueError("Native transient lifecycle requires round_robin cluster scheduler")
+        from frontier.scheduler.cluster_scheduler.jsq_cluster_scheduler import (
+            JSQClusterScheduler,
+        )
+        if type(self.scheduler) not in (RoundRobinClusterScheduler, JSQClusterScheduler):
+            raise ValueError(
+                "Native transient lifecycle requires round_robin or jsq cluster scheduler"
+            )
         replica_config = config.cluster_config.replica_config
         if getattr(getattr(replica_config, "speculative_decoding_config", None),
                    "enabled", False):
