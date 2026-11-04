@@ -75,6 +75,34 @@ class HydraScenarioTests(unittest.TestCase):
                 )
                 self.assertEqual(ready_gpu_seconds(path, 40), expected)
 
+    def test_reclamation_controls_compose(self):
+        from malleserve.tools.summarize_transient_lifetime_sweep import PATTERN
+        for routing in ("rr", "wa", "cwa"):
+            no = f"transient_no_reclamation_s40_{routing}_r12"
+            self.assertIsNotNone(PATTERN.fullmatch(no))
+            no_cfg = loaded([
+                "resources=transient", "policy=transient", "workload=mooncake_r12",
+                "resources.lifecycle_mode=no_reclamation",
+                f"scheduler.routing_policy={routing}",
+                "experiment.group=transient_lifetime_sweep_r12",
+                f"experiment.name={no}",
+            ])
+            self.assertEqual(no_cfg["resources"]["lifecycle_mode"], "no_reclamation")
+            for recovery in ("baseline_recovery", "ideal_recovery"):
+                name = f"transient_single_reclaim_t180_s40_{recovery}_{routing}_r12"
+                self.assertIsNotNone(PATTERN.fullmatch(name))
+                cfg = loaded([
+                    "resources=transient", "policy=transient", "workload=mooncake_r12",
+                    "resources.lifecycle_mode=single_reclaim",
+                    "+resources.reclaim_at_seconds=180",
+                    f"+resources.recovery_mode={recovery}",
+                    f"scheduler.routing_policy={routing}",
+                    "experiment.group=transient_lifetime_sweep_r12",
+                    f"experiment.name={name}",
+                ])
+                self.assertEqual(cfg["resources"]["reclaim_at_seconds"], 180)
+                self.assertEqual(cfg["resources"]["recovery_mode"], recovery)
+
     def test_fixed_resource_groups(self):
         for group, size in (("fixed3", 3), ("fixed4", 4), ("fixed8", 8)):
             cfg = loaded([f"resources={group}", "policy=fixed"])
