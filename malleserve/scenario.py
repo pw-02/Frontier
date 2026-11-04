@@ -92,6 +92,18 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
                 {"timestamp": reclaim_at, "node_id": "transient-0", "action": "reclaim"},
                 {"timestamp": ready_again_at, "node_id": "transient-0", "action": "available"},
             ]
+        elif lifecycle_mode == "single_reclaim":
+            # Two distinct candidate nodes: a single abrupt reclaim with
+            # a replacement node becoming available immediately afterward.
+            # Normal startup delay applies to each availability event.
+            reclaim_at = float(resource["reclaim_at_seconds"])
+            if not 0 < reclaim_at < duration:
+                raise ValueError("Expected 0 < reclaim_at_seconds < duration")
+            events = [
+                {"timestamp": 0.0, "node_id": "transient-0", "action": "available"},
+                {"timestamp": reclaim_at, "node_id": "transient-0", "action": "reclaim"},
+                {"timestamp": reclaim_at, "node_id": "transient-1", "action": "available"},
+            ]
         elif lifecycle_mode in ("baseline_recovery", "naive"):
             events = generate(duration, lifetime)
         elif lifecycle_mode == "ideal_recovery":
