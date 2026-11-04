@@ -95,6 +95,24 @@ class KVCacheManager:
             field="scheduler_num_computed_tokens",
         )
 
+    def count_cached_prefix_tokens(self, request: Request) -> int:
+        """Read-only estimate of reusable prompt tokens for routing.
+
+        Match consecutive full prompt blocks by hash. As in the vLLM V1
+        admission path, leave at least one prompt token to compute. Unlike
+        get_computed_blocks(), this method does not change hit statistics,
+        allocate blocks, or update eviction/LRU state.
+        """
+        if not self.enable_caching:
+            return 0
+        hits = 0
+        for block_hash in request.prompt_block_hash_ids(self.block_size):
+            if self.block_pool.get_cached_block(block_hash) is None:
+                break
+            hits += 1
+        max_admitted = max(0, (int(request.num_prefill_tokens) - 1) // self.block_size)
+        return min(hits, max_admitted) * self.block_size
+
     def get_computed_blocks(self, request: Request) -> tuple[list[KVCacheBlock], int]:
         if not self.enable_caching:
             return [], 0
