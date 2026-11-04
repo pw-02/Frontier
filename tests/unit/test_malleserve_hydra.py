@@ -21,12 +21,13 @@ def loaded(overrides: list[str] | None = None) -> dict:
 
 
 class HydraScenarioTests(unittest.TestCase):
-    def test_default_naive(self):
+    def test_default_transient_baseline_recovery(self):
         cfg = loaded()
-        self.assertEqual(cfg["policy"]["name"], "naive")
+        self.assertEqual(cfg["policy"]["name"], "transient")
         self.assertEqual(cfg["resources"]["mode"], "transient")
         self.assertEqual(cfg["resources"]["persistent_gpus"], 4)
-        self.assertEqual(cfg["experiment"]["name"], "naive_r10")
+        self.assertEqual(cfg["resources"]["lifecycle_mode"], "baseline_recovery")
+        self.assertEqual(cfg["experiment"]["name"], "transient_r10")
 
     def test_fixed_resource_groups(self):
         for group, size in (("fixed4", 4), ("fixed8", 8)):
@@ -44,7 +45,7 @@ class HydraScenarioTests(unittest.TestCase):
         transient = loaded()
         self.assertEqual(
             experiment_output(transient).parts[-3:],
-            ("runs", "transient", "naive_r10_qwen_qwen3_8b"),
+            ("runs", "transient", "transient_r10_qwen_qwen3_8b"),
         )
 
     def test_kv_aware_routing_config(self):
