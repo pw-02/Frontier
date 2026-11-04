@@ -32,6 +32,20 @@ class JSQClusterSchedulerTests(unittest.TestCase):
         self.assertEqual(ClusterSchedulerType.from_str("jsq"), ClusterSchedulerType.JSQ)
         self.assertIs(ClusterSchedulerRegistry.get_key_from_str("jsq"), ClusterSchedulerType.JSQ)
 
+    def test_cli_polymorphic_config_accepts_jsq(self):
+        # Exercise the same dataclass-discovery path that rejected the CLI
+        # before the JSQ config class was added.
+        from frontier.config.cluster_scheduler_config import (
+            BaseClusterSchedulerConfig,
+            JSQClusterSchedulerConfig,
+        )
+        from frontier.config.utils import get_all_subclasses
+        candidates = {
+            str(cls.get_type()): cls
+            for cls in get_all_subclasses(BaseClusterSchedulerConfig)
+        }
+        self.assertIs(candidates["jsq"], JSQClusterSchedulerConfig)
+
     def test_assigns_to_shortest_queue_and_counts_in_event(self):
         scheduler = self.make_scheduler(loads=(4, 0, 1))
         scheduler._request_queue = [SimpleNamespace(_arrived_at=i) for i in range(4)]
