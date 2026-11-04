@@ -41,6 +41,7 @@ Run all 12 controlled Qwen3-8B, Mooncake 10-RPS scenarios (3 routing policies
 
 ```bash
 bash malleserve/tools/run_routing_policy_sweep.sh
+python -m malleserve.tools.summarize_routing_policy_sweep
 ```
 
 Outputs are organized under
@@ -50,6 +51,8 @@ directory. Without `experiment.group`, older result paths are unchanged.
 The script uses distinct names and does not move or overwrite ongoing
 experiments in the original `runs/fixed` and `runs/transient` folders.
 Runs with the same completed fingerprint are skipped on re-execution.
+The summary command writes `routing_policy_comparison.csv` to the group folder
+for subsequent P50/P95/P99 plots and flags unfinished runs as MISSING.
 
 ## KV-aware cluster routing (experimental)
 
