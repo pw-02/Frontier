@@ -2,6 +2,7 @@ name: vllm_v1
 cluster: round_robin
 # Used only when cluster=kv_aware; safe for other routing policies.
 load_weight: 1.0
+cache_weight: 1.0
 decode_token_weight: 16.0
 decode_cuda_graph_mode: piecewise
 max_model_len: 17000
