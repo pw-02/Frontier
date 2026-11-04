@@ -6,6 +6,7 @@ from pathlib import Path
 
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
+from malleserve.run_state import experiment_output
 
 
 CONF = Path(__file__).resolve().parents[2] / "malleserve/conf"
@@ -33,6 +34,18 @@ class HydraScenarioTests(unittest.TestCase):
             self.assertEqual(cfg["resources"]["gpus"], size)
             self.assertEqual(cfg["resources"]["mode"], "fixed")
             self.assertEqual(cfg["experiment"]["name"], f"{group}_r10")
+
+    def test_organized_output_paths(self):
+        fixed = loaded(["resources=fixed4", "policy=fixed", "workload=mooncake_r12"])
+        self.assertEqual(
+            experiment_output(fixed).parts[-3:],
+            ("runs", "fixed", "fixed4_r12_qwen_qwen3_8b"),
+        )
+        transient = loaded()
+        self.assertEqual(
+            experiment_output(transient).parts[-3:],
+            ("runs", "transient", "naive_r10_qwen_qwen3_8b"),
+        )
 
     def test_composable_overrides(self):
         cfg = loaded(["workload=mooncake_r2", "resources.startup_seconds=0",
