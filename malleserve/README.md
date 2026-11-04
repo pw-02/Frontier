@@ -14,13 +14,13 @@ pip install -e \".[test]\"
 python -m malleserve.debug_run
 python -m malleserve.debug_run resources=fixed4 policy=fixed
 python -m malleserve.debug_run resources=fixed8 policy=fixed
-python -m malleserve.debug_run resources.startup_seconds=0 experiment.name=naive_s0
+python -m malleserve.debug_run resources.startup_seconds=0 experiment.name=baseline_s0
 ```
 
 Set a breakpoint in `frontier/transient_lifecycle.py` or `frontier/simulator.py`, then use **Debug Python File** on `malleserve/debug_run.py`. Hydra and Frontier execute in the same interpreter. For a multi-run sweep, give each scenario a unique output name:
 
 ```bash
-python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=naive_s${resources.startup_seconds}'
+python -m malleserve.debug_run -m resources.startup_seconds=0,20,40 'experiment.name=baseline_s${resources.startup_seconds}'
 ```
 
 ## KV-aware cluster routing (experimental)
@@ -139,7 +139,7 @@ python -m malleserve.debug_run \
 For the six-run routing sweep, use `scheduler.cluster=round_robin` or `kv_aware`;
 set `scheduler.cache_weight=0.0` for token-only and `1.0` for KV-aware.
 Use `resources.lifecycle_mode=baseline_recovery` or `ideal_recovery`.
-Legacy `resources=naive` and `policy=naive` remain available for old runs.
+Legacy `resources=naive`, `policy=naive`, and `resources.lifecycle_mode=naive` remain available for old runs.
 
 The output `transient_lifecycle.json` includes
 `recovery_mode`, `oracle_restored_requests`, `oracle_restored_tokens`
