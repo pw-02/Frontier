@@ -62,8 +62,30 @@ def _new_comparison_row(workers, rate, sim, reference):
 
 def find_frontier(root: Path, workers: int, rate: int):
     names = [f"fixed{workers}_r{rate}", f"fixed{workers}_mooncake_r{rate}", f"validation_w{workers}_r{rate}"]
-    matches = [path for name in names
-               for path in (root / name).rglob("malleserve_summary.json") if path.is_file()]
+    # Accept both the new runs/fixed/<name>_<model>/ layout and the
+    # legacy runs/<name>/ hierarchy. Ignore sensitivity experiments when
+    # looking up a baseline Polaris comparison.
+    matches = []
+    for base in (root / "fixed", root):
+        if not base.is_dir():
+            continue
+        for entry in base.iterdir():
+            if not entry.is_dir() or not any(
+                entry.name == name or entry.name.startswith(name + "_")
+                for name in names
+            ):
+                continue
+            if any(tag in entry.name for tag in (
+                "_rope_half", "_norm_half", "_combined_half"
+            )):
+                continue
+            direct = entry / "malleserve_summary.json"
+            if direct.is_file():
+                matches.append(direct)
+            else:
+                matches.extend(
+                    p for p in entry.rglob("malleserve_summary.json") if p.is_file()
+                )
     if len(matches) > 1:
         raise ValueError(f"Multiple Frontier summaries for GPUs={workers}, RPS={rate}")
     if not matches:
