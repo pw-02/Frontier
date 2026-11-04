@@ -22,6 +22,21 @@ def merge(base: dict, override: dict) -> dict:
     return result
 
 
+def resolve_routing_policy(sched: dict) -> tuple[str, float]:
+    """Readable routing names; legacy native settings work when alias is null."""
+    alias = sched.get("routing_policy")
+    if alias is None:
+        return str(sched["cluster"]), float(sched.get("cache_weight", 1.0))
+    policies = {
+        "rr": ("round_robin", 1.0),
+        "wa": ("kv_aware", 0.0),
+        "cwa": ("kv_aware", 1.0),
+    }
+    if alias not in policies:
+        raise ValueError(f"Invalid routing_policy {alias!r}; choose rr, wa or cwa")
+    return policies[alias]
+
+
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
     from malleserve.tools.generate_native_schedule import generate
     expected_policy = "fixed" if config["resources"]["mode"] == "fixed" else "transient"
@@ -110,10 +125,11 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         sensitivity_args.extend([
             "--random_forrest_execution_time_predictor_config_" + key, str(value)
         ])
+    cluster_scheduler, cache_weight = resolve_routing_policy(sched)
     kv_routing_args = []
-    if str(sched["cluster"]) == "kv_aware":
+    if cluster_scheduler == "kv_aware":
         for key, default in (("load_weight", 1.0), ("cache_weight", 1.0), ("decode_token_weight", 16.0)):
-            value = float(sched.get(key, default))
+            value = cache_weight if key == "cache_weight" else float(sched.get(key, default))
             if not math.isfinite(value) or value < 0:
                 raise ValueError(f"Invalid KV-aware routing {key}={value!r}")
             kv_routing_args.extend([
@@ -124,7 +140,7 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         "--sys_arch", "co-location",
         "--cc_backend_config_type", "analytical",
         "--cluster_config_num_replicas", str(count),
-        "--cluster_scheduler_config_type", str(sched["cluster"]),
+        "--cluster_scheduler_config_type", cluster_scheduler,
         *kv_routing_args,
         "--replica_config_model_name", str(model["name"]),
         "--replica_config_device", str(model["device"]),
