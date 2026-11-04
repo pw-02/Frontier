@@ -44,6 +44,7 @@ class KVAwareRoutingTests(unittest.TestCase):
         obj._replica_schedulers = {(i, 0): lane for i, lane in enumerate(lanes)}
         obj._request_queue = []
         obj._load_weight = 1.0
+        obj._cache_weight = 1.0
         obj._decode_token_weight = 16.0
         if ready is not None:
             obj._transient_ready_replica_ids = set(ready)
@@ -51,6 +52,20 @@ class KVAwareRoutingTests(unittest.TestCase):
 
     def test_cache_reuse_helps_when_work_equal(self):
         obj = self.scheduler([Lane(cached=800), Lane(cached=0)])
+        obj._request_queue = [request(0)]
+        self.assertEqual(obj.schedule()[0][0], 0)
+
+    def test_token_only_ignores_incoming_cache_overlap(self):
+        # Worker 0 has more cached tokens but also more outstanding work.
+        # With cache_weight=0, only outstanding work affects placement.
+        obj = self.scheduler([Lane(prefill=100, cached=900), Lane(cached=0)])
+        obj._cache_weight = 0.0
+        obj._request_queue = [request(0)]
+        self.assertEqual(obj.schedule()[0][0], 1)
+
+    def test_cache_awareness_reverses_token_only_decision(self):
+        obj = self.scheduler([Lane(prefill=100, cached=900), Lane(cached=0)])
+        obj._cache_weight = 1.0
         obj._request_queue = [request(0)]
         self.assertEqual(obj.schedule()[0][0], 0)
 
