@@ -44,12 +44,12 @@ python -m malleserve.debug_run -m \
 ```
 
 Hydra's basic launcher executes these sequentially. Results are under
-`outputs/malleserve/runs/fixed4_r10/`, etc. A completed run contains
+`outputs/malleserve/runs/fixed/fixed4_r10_qwen_qwen3_8b/`, etc. A completed run contains
 `malleserve_summary.json`, `metrics_ground_truth.jsonl` and a
 `run_complete.json` marker holding a SHA-256 fingerprint of the composed
 configuration and request trace. **Rerunning the same sweep skips only
 matching completed runs** (`experiment.skip_completed=true` by default).
-Changed parameters or input files do **not** silently reuse an old run.
+Changed parameters or input files do **not** silently reuse an old run. New fixed-run directories are grouped under `runs/fixed/`, and validation also searches the old layout `runs/<experiment>/`.
 
 An incomplete run or an old output directory without the matching
 completion marker is *not* automatically overwritten: remove/rename
