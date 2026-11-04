@@ -39,6 +39,8 @@ def resolve_routing_policy(sched: dict) -> tuple[str, float]:
 
 def prepare(config: dict) -> tuple[list[str], Path, Path]:
     from malleserve.tools.generate_native_schedule import generate
+    from malleserve.tools.generate_cluster_availability import generate as generate_cluster
+    from frontier.transient_lifecycle import read_availability
     expected_policy = "fixed" if config["resources"]["mode"] == "fixed" else "transient"
     if config["policy"]["name"] not in ((expected_policy,) if expected_policy == "fixed" else ("transient", "naive")):
         raise ValueError("Policy and resource mode mismatch")
@@ -63,18 +65,40 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
         count = int(resource["gpus"])
         transient_args = []
     elif resource["mode"] == "transient":
-        if (resource.get("lifecycle_mode") != "observed_one_reclaim"
-                and int(resource["candidate_nodes"]) != 2):
-            raise ValueError("Current rotation generator supports 2 candidate nodes")
         lifecycle_mode = str(resource.get("lifecycle_mode", "baseline_recovery"))
-        candidate_count = (1 if lifecycle_mode in ("no_reclamation", "observed_one_reclaim")
-                           else int(resource["candidate_nodes"]))
-        count = int(resource["persistent_gpus"]) + (
-            candidate_count * int(resource["transient_gpus_per_node"]))
         schedule = out / "availability.jsonl"
         lifetime = float(resource["node_lifetime_seconds"])
         duration = float(resource["duration_seconds"])
-        if lifecycle_mode == "no_reclamation":
+        schedule_kind = str(resource.get("schedule_kind", "rotation"))
+        external_schedule = resource.get("schedule_file")
+        if external_schedule:
+            source = Path(str(external_schedule))
+            if not source.is_absolute():
+                source = ROOT / source
+            if not source.is_file():
+                raise FileNotFoundError(f"Missing external availability trace: {source}")
+            import shutil
+            if source.resolve() == schedule.resolve():
+                raise ValueError("External source schedule must not point to the experiment output")
+            shutil.copyfile(source, schedule)
+            events = None
+        elif schedule_kind == "synthetic_overlapping":
+            events = generate_cluster(
+                duration=duration,
+                nodes=int(resource["candidate_nodes"]),
+                seed=int(resource.get("schedule_seed", 7)),
+                min_lifetime=float(resource.get("min_lifetime_seconds", 90)),
+                max_lifetime=float(resource.get("max_lifetime_seconds", 240)),
+                min_downtime=float(resource.get("min_downtime_seconds", 20)),
+                max_downtime=float(resource.get("max_downtime_seconds", 90)),
+                initial_spread=float(resource.get("initial_spread_seconds", 90)),
+            )
+        elif schedule_kind != "rotation":
+            raise ValueError(f"Unsupported schedule_kind: {schedule_kind}")
+        elif int(resource["candidate_nodes"]) != 2 and lifecycle_mode not in (
+                "no_reclamation", "observed_one_reclaim"):
+            raise ValueError("Rotation requires candidate_nodes=2; use synthetic_overlapping or schedule_file")
+        elif lifecycle_mode == "no_reclamation":
             # No terminal reclaim: the candidate remains active through
             # the complete request-drain period as well as measurement.
             events = [
@@ -110,7 +134,15 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
             events = generate(duration, lifetime)
         else:
             raise ValueError(f"Unknown lifecycle_mode: {lifecycle_mode}")
-        schedule.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
+        if events is not None:
+            schedule.write_text("".join(json.dumps(e) + "\\n" for e in events), encoding="utf-8")
+        parsed = read_availability(str(schedule))
+        candidate_count = len({event.node for event in parsed})
+        configured = int(resource["candidate_nodes"])
+        if schedule_kind == "synthetic_overlapping" and not external_schedule and candidate_count != configured:
+            raise ValueError(f"Synthetic schedule has {candidate_count} nodes, expected {configured}")
+        count = int(resource["persistent_gpus"]) + (
+            candidate_count * int(resource["transient_gpus_per_node"]))
         recovery_mode = (str(resource["recovery_mode"])
                          if lifecycle_mode == "single_reclaim"
                          else lifecycle_mode)
