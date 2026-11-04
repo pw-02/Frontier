@@ -1540,6 +1540,43 @@ class VLLMv1EngineReplicaScheduler(
 
         return self._create_batch(ordered_scheduled_requests, ordered_num_tokens)
 
+    def get_routing_workload(self) -> dict[str, int]:
+        """Read-only, token-aware outstanding-work snapshot for routing.
+
+        Counts both waiting/preempted and running requests, unlike
+        num_pending_requests (which counts only the waiting queues).
+        This is a work proxy, not a calibrated latency predictor.
+        """
+        requests: dict[int, Request] = {}
+        for request in self.peek_waiting_requests():
+            requests[request.id] = request
+        for request in self._running_requests:
+            requests[request.id] = request
+        prefill = sum(
+            max(0, int(req.num_prefill_tokens) - int(req.num_processed_tokens))
+            for req in requests.values()
+        )
+        decode = sum(
+            max(
+                0,
+                int(req.total_tokens)
+                - max(int(req.num_prefill_tokens), int(req.num_processed_tokens)),
+            )
+            for req in requests.values()
+        )
+        return {
+            "outstanding_requests": len(requests),
+            "prefill_tokens": prefill,
+            "decode_tokens": decode,
+        }
+
+    def get_routing_cached_prefix_tokens(self, request: Request) -> int:
+        """Estimate admission-usable local KV prefix reuse without mutations."""
+        manager = self._kv_cache_manager
+        if manager is None:
+            return 0
+        return manager.count_cached_prefix_tokens(request)
+
     @property
 
     def num_pending_requests(self) -> int:
