@@ -142,8 +142,17 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
             events = generate(duration, lifetime)
         else:
             raise ValueError(f"Unknown lifecycle_mode: {lifecycle_mode}")
+        if events is None and lifecycle_mode == "no_reclamation":
+            # External E2: keep only the first availability event per node.
+            raw = read_availability(str(schedule))
+            first = {}
+            for item in raw:
+                if item.action == "available":
+                    first.setdefault(item.node, {"timestamp": item.time,
+                                                 "node_id": item.node, "action": "available"})
+            events = sorted(first.values(), key=lambda e: (e["timestamp"], e["node_id"]))
         if events is not None:
-            schedule.write_text("".join(json.dumps(e) + "\\n" for e in events), encoding="utf-8")
+            schedule.write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
         parsed = read_availability(str(schedule))
         candidate_count = len({event.node for event in parsed})
         configured = int(resource["candidate_nodes"])
