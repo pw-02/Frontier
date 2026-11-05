@@ -1,0 +1,8 @@
+# @package _global_
+# E1: stable capacity only.
+resources:
+  label: e1_stable
+  mode: fixed
+  gpus: 8
+policy:
+  name: fixed
