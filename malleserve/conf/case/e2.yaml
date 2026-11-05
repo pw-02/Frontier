@@ -1,0 +1,10 @@
+# @package _global_
+# E2: stable + independently arriving idle nodes, never reclaimed.
+resources:
+  label: e2_idle_no_reclamation
+  mode: transient
+  schedule_kind: synthetic_overlapping
+  lifecycle_mode: no_reclamation
+  recovery_mode: full_restart
+policy:
+  name: transient
