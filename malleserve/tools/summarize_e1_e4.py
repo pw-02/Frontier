@@ -21,7 +21,7 @@ METRICS = {
     "outstanding_end": "measured_still_outstanding_at_window_end",
 }
 PATTERN = re.compile(
-    r"^(?P<case>e[1-4])_(?:fixed(?P<gpus>8|16|32)|s(?P<seed>\\d+))_"
+    r"^(?P<case>e[1-4])_(?:fixed(?P<gpus>8|16|32)|s(?P<seed>\d+))_"
     r"(?P<route>rr|wa|cwa)_r34$"
 )
 
