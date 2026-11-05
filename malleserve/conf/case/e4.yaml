@@ -4,7 +4,7 @@ resources:
   label: e4_immediate_full_restart
   mode: transient
   schedule_kind: synthetic_overlapping
-  lifecycle_mode: baseline_recovery
+  lifecycle_mode: immediate_reclamation
   recovery_mode: full_restart
 policy:
   name: transient
