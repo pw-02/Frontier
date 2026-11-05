@@ -25,6 +25,7 @@ class ReplicaLifecycleEvent(BaseEvent):
         return self.controller.change(
             AvailabilityChange(self.time, self.node, self.action),
             self.generation,
+            metrics_store=metrics_store,
         )
 
     def to_dict(self):
