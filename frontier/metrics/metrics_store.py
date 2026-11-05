@@ -257,6 +257,7 @@ class MetricsStore:
         self._total_requests = 0
         self._completed_requests = 0
         self._completed_request_ids = set()
+        self._failed_request_ids = set()
 
         self._cluster_configs = cluster_configs
 
@@ -2172,10 +2173,28 @@ class MetricsStore:
         """Register total number of requests generated for this simulation."""
         self._total_requests = int(n)
 
+    def on_request_failure(self, time: float, request, reason: str) -> None:
+        """Record a terminal unsuccessful request without counting it as a completion."""
+        request_id = int(request.id)
+        if request_id in self._completed_request_ids or request_id in self._failed_request_ids:
+            raise RuntimeError(f"Duplicate terminal request outcome: {request_id}")
+        self._failed_request_ids.add(request_id)
+        self._write_metrics_ground_truth_record({
+            "event_type": "request_failure",
+            "time_s": float(time),
+            "failed_at": float(time),
+            "request_id": request_id,
+            "arrived_at": float(request.arrived_at),
+            "reason": str(reason),
+        })
+
+    def get_failed_requests(self) -> int:
+        return len(self._failed_request_ids)
+
     def all_requests_completed(self) -> bool:
         """Return True if all requests have completed (and at least one was registered)."""
         return (self._total_requests > 0) and (
-            self._completed_requests >= self._total_requests
+            self._completed_requests + len(self._failed_request_ids) >= self._total_requests
         )
 
     def get_total_requests(self) -> int:
