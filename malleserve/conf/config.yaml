@@ -1,10 +1,11 @@
 defaults:
-  - workload: mooncake_r10
-  - resources: transient
+  - workload: mooncake_r34
+  - resources: transient_large
   - model: qwen3_8b_a100
   - calibration: baseline
   - scheduler: vllm_v1
   - policy: transient
+  - case: e4
   - _self_
 
 experiment:
