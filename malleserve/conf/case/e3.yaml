@@ -4,7 +4,7 @@ resources:
   label: e3_immediate_no_recovery
   mode: transient
   schedule_kind: synthetic_overlapping
-  lifecycle_mode: baseline_recovery
+  lifecycle_mode: immediate_reclamation
   recovery_mode: no_recovery
 policy:
   name: transient
