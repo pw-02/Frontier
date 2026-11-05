@@ -1221,13 +1221,14 @@ class Simulator:
             os.makedirs(self._config.metrics_config.output_dir, exist_ok=True)
             with open(path, "w", encoding="utf-8") as handle:
                 json_module.dump({
-                    "mode": "native_frontier_naive_replay",
+                    "mode": "native_frontier_transient_replay",
                     "startup_seconds": self._transient_lifecycle.startup,
                     "persistent_replicas": len(self._transient_lifecycle.ids) - sum(
                         len(ids) for ids in self._transient_lifecycle.node_replicas.values()
                     ),
                     "node_replica_mapping": self._transient_lifecycle.node_replicas,
                     "retries": self._transient_lifecycle.retries,
+                    "failed_requests": self._transient_lifecycle.failed_requests,
                     "recovery_mode": self._transient_lifecycle.recovery_mode,
                     "oracle_restored_requests": self._transient_lifecycle.oracle_restored_requests,
                     "oracle_restored_tokens": self._transient_lifecycle.oracle_restored_tokens,
