@@ -148,12 +148,13 @@ class NativeTransientLifecycle:
         self.scheduler._transient_ready_replica_ids = self.ready_ids
         self.lifecycle_records: list[dict] = []
         self.retries = 0
+        self.failed_requests = 0
         self.lost_processed_tokens = 0
         self.stale_event_purges = 0
         self.recovery_mode = str(getattr(config, "transient_recovery_mode", "baseline_recovery"))
         if self.recovery_mode == "naive":  # compatibility with earlier runs
             self.recovery_mode = "baseline_recovery"
-        if self.recovery_mode not in ("baseline_recovery", "ideal_recovery"):
+        if self.recovery_mode not in ("no_recovery", "baseline_recovery", "ideal_recovery"):
             raise ValueError(f"Unsupported transient recovery mode: {self.recovery_mode}")
         self.oracle_restored_requests = 0
         self.oracle_restored_tokens = 0
@@ -273,7 +274,7 @@ class NativeTransientLifecycle:
             "unique_unfinished": len(by_id),
         }, {"records": records, "requests": {i: req for i, (_, req) in by_id.items()}})
 
-    def change(self, event: AvailabilityChange, generation: int | None = None):
+    def change(self, event: AvailabilityChange, generation: int | None = None, metrics_store=None):
         """Apply native lifecycle transition; return scheduling events.
 
         The caller must purge queued GPU-stage events for reclaimed replicas
@@ -337,6 +338,13 @@ class NativeTransientLifecycle:
             if len(globally_queued) != len(self.scheduler._request_queue):
                 raise RuntimeError("Duplicate live request IDs in global queue")
             for req in unique.values():
+                if self.recovery_mode == "no_recovery":
+                    if metrics_store is None:
+                        raise RuntimeError("No-recovery reclamation requires failure metrics")
+                    metrics_store.on_request_failure(at, req, "transient_node_reclaimed")
+                    self.failed_requests += 1
+                    self.lost_processed_tokens += max(0, int(req.num_processed_tokens))
+                    continue
                 # Client-level retry: lose ALL prior generated output.
                 # Set processed to the original prompt length before restart,
                 # so restart() keeps prompt/output sizes unchanged and
@@ -383,6 +391,7 @@ class NativeTransientLifecycle:
                 "replicas": replica_details,
                 "requests": request_details,
                 "unique_interrupted": len(unique),
+                "terminal_failures": len(unique) if self.recovery_mode == "no_recovery" else 0,
                 "queued_only": sum(d["state"] == "queued" for d in request_details),
                 "never_processed": sum(not d["ever_processed"] for d in request_details),
                 "processed_tokens_total": sum(d["processed_tokens"] for d in request_details),
@@ -390,7 +399,9 @@ class NativeTransientLifecycle:
             self.reclamation_diagnostics.append(diagnostic)
             self.lifecycle_records.append({
                 "timestamp": at, "action": "reclaim", "node_id": node,
-                "replica_ids": replicas, "retried_requests": len(unique)})
+                "replica_ids": replicas,
+                "retried_requests": 0 if self.recovery_mode == "no_recovery" else len(unique),
+                "failed_requests": len(unique) if self.recovery_mode == "no_recovery" else 0})
             if self.scheduler._request_queue:
                 result.append(ClusterScheduleEvent(at, ClusterType.MONOLITHIC))
         else:
