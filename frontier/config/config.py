@@ -171,7 +171,7 @@ class SimulationConfig(ABC):
         metadata={"help": "Time from transient node availability to ready routing (seconds)."},
     )
     transient_recovery_mode: str = field(
-        default="naive",
+        default="baseline_recovery",
         metadata={
             "help": "Abrupt no-recovery failure, full-request restart, or legacy oracle recovery.",
             "choices": ["no_recovery", "baseline_recovery", "naive", "ideal_recovery"],
