@@ -1,4 +1,9 @@
-- resources=fixed4
-- policy=fixed
-- calibration=combined_half
-- experiment.name=fixed4_r10_combined_half
+- resources=transient_large
+- policy=transient
+- workload=mooncake_r34
+- resources.schedule_seed=7
+- resources.lifecycle_mode=baseline_recovery
+- scheduler.routing_policy=rr
+- calibration=baseline
+- experiment.group=large_scale_hpc_r34
+- experiment.name=large_s7_baseline_recovery_rr_r34

@@ -1,15 +1,29 @@
 workload:
-  rate: 10
-  name: mooncake_r10
-  trace: data/malleserve/mooncake_r10_330s.csv
+  rate: 34
+  name: mooncake_r34
+  trace: data/malleserve/mooncake_r34_330s.csv
   dataset: data/malleserve/mooncake_toolagent_qwen3_8b_n12000.json
   warmup_seconds: 30
   measurement_seconds: 300
   max_output_tokens: 128
 resources:
-  label: fixed4
-  mode: fixed
-  gpus: 4
+  label: transient_large
+  mode: transient
+  persistent_gpus: 8
+  transient_gpus_per_node: 4
+  candidate_nodes: 16
+  schedule_kind: synthetic_overlapping
+  schedule_file: null
+  schedule_seed: 7
+  min_lifetime_seconds: 90
+  max_lifetime_seconds: 240
+  min_downtime_seconds: 20
+  max_downtime_seconds: 90
+  initial_spread_seconds: 90
+  node_lifetime_seconds: 180
+  startup_seconds: 40
+  duration_seconds: 330
+  lifecycle_mode: baseline_recovery
 model:
   name: Qwen/Qwen3-8B
   device: a100
@@ -17,13 +31,17 @@ model:
   linear_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/linear_op_kernel_only.csv
   attention_kernel_profile: data/profiling/compute/a100/Qwen/Qwen3-8B/attention_kernel_only.csv
 calibration:
-  label: combined_half
-  decode_phase_attn_rope_calibration_scale: 0.5
-  decode_phase_input_layernorm_calibration_scale: 0.5
-  decode_phase_post_attention_layernorm_calibration_scale: 0.5
+  label: baseline
+  decode_phase_attn_rope_calibration_scale: null
+  decode_phase_input_layernorm_calibration_scale: null
+  decode_phase_post_attention_layernorm_calibration_scale: null
 scheduler:
   name: vllm_v1
   cluster: round_robin
+  routing_policy: rr
+  load_weight: 1.0
+  cache_weight: 1.0
+  decode_token_weight: 16.0
   decode_cuda_graph_mode: piecewise
   max_model_len: 17000
   max_tokens_in_batch: 2048
@@ -32,9 +50,10 @@ scheduler:
   enable_prefix_caching: true
   enable_chunked_prefill: true
 policy:
-  name: fixed
+  name: transient
 experiment:
   skip_completed: true
-  name: fixed4_r10_combined_half
+  group: large_scale_hpc_r34
+  name: large_s7_baseline_recovery_rr_r34
 metrics:
   slo_seconds: 30
