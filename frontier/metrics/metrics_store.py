@@ -2263,6 +2263,7 @@ class MetricsStore:
         system_metrics["simulation_metadata"] = {
             "total_requests": self._total_requests,
             "completed_requests": self._completed_requests,
+            "failed_requests": len(self._failed_request_ids),
             "system_architecture": self._simulation_config.sys_arch,
         }
         server_count_metadata = (
