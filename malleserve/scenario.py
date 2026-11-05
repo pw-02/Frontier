@@ -93,6 +93,14 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
                 max_downtime=float(resource.get("max_downtime_seconds", 90)),
                 initial_spread=float(resource.get("initial_spread_seconds", 90)),
             )
+            if lifecycle_mode == "no_reclamation":
+                # E2: identical first-availability times as E3/E4, but
+                # allocations remain for the entire simulation/drain.
+                first = {}
+                for item in events:
+                    if item["action"] == "available":
+                        first.setdefault(item["node_id"], item)
+                events = sorted(first.values(), key=lambda e: (e["timestamp"], e["node_id"]))
         elif schedule_kind != "rotation":
             raise ValueError(f"Unsupported schedule_kind: {schedule_kind}")
         elif int(resource["candidate_nodes"]) != 2 and lifecycle_mode not in (
@@ -143,18 +151,23 @@ def prepare(config: dict) -> tuple[list[str], Path, Path]:
             raise ValueError(f"Synthetic schedule has {candidate_count} nodes, expected {configured}")
         count = int(resource["persistent_gpus"]) + (
             candidate_count * int(resource["transient_gpus_per_node"]))
-        recovery_mode = (str(resource["recovery_mode"])
-                         if lifecycle_mode == "single_reclaim"
-                         else lifecycle_mode)
-        if recovery_mode not in ("baseline_recovery", "ideal_recovery",
-                                 "no_reclamation", "observed_one_reclaim", "naive"):
+        recovery_mode = str(resource.get("recovery_mode") or lifecycle_mode)
+        recovery_aliases = {
+            "full_restart": "baseline_recovery",
+            "no_recovery": "no_recovery",
+            "no_reclamation": "baseline_recovery",
+            "observed_one_reclaim": "baseline_recovery",
+            "single_reclaim": "baseline_recovery",
+            "naive": "baseline_recovery",
+        }
+        recovery_mode = recovery_aliases.get(recovery_mode, recovery_mode)
+        if recovery_mode not in ("no_recovery", "baseline_recovery", "ideal_recovery"):
             raise ValueError(f"Unsupported recovery_mode: {recovery_mode}")
         transient_args = ["--transient_schedule_file", str(schedule),
              "--transient_persistent_replicas", str(resource["persistent_gpus"]),
              "--transient_replicas_per_node", str(resource["transient_gpus_per_node"]),
              "--transient_startup_seconds", str(resource["startup_seconds"]),
-             "--transient_recovery_mode", (
-                 "ideal_recovery" if recovery_mode == "ideal_recovery" else "baseline_recovery")]
+             "--transient_recovery_mode", recovery_mode]
     else:
         raise ValueError("Invalid resource mode")
     calibration = config.get("calibration", {})
