@@ -14,4 +14,5 @@ initial_spread_seconds: 90
 node_lifetime_seconds: 180
 startup_seconds: 40
 duration_seconds: 330
-lifecycle_mode: baseline_recovery
+lifecycle_mode: immediate_reclamation
+recovery_mode: full_restart
