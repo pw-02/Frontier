@@ -1,0 +1,10 @@
+# @package _global_
+# E4: abruptly reclaim GPUs; retry interrupted requests from the beginning.
+resources:
+  label: e4_immediate_full_restart
+  mode: transient
+  schedule_kind: synthetic_overlapping
+  lifecycle_mode: baseline_recovery
+  recovery_mode: full_restart
+policy:
+  name: transient
