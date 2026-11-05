@@ -1,0 +1,10 @@
+# @package _global_
+# E3: abruptly reclaim GPUs; interrupted assignments fail permanently.
+resources:
+  label: e3_immediate_no_recovery
+  mode: transient
+  schedule_kind: synthetic_overlapping
+  lifecycle_mode: baseline_recovery
+  recovery_mode: no_recovery
+policy:
+  name: transient
