@@ -173,8 +173,8 @@ class SimulationConfig(ABC):
     transient_recovery_mode: str = field(
         default="naive",
         metadata={
-            "help": "Abrupt full replay or zero-time oracle KV recovery.",
-            "choices": ["naive", "ideal_recovery"],
+            "help": "Abrupt no-recovery failure, full-request restart, or legacy oracle recovery.",
+            "choices": ["no_recovery", "baseline_recovery", "naive", "ideal_recovery"],
         },
     )
     sys_arch: str = field(
