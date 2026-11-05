@@ -2931,6 +2931,10 @@ class MetricsStore:
         }
 
     def _on_request_end(self, time: float, request: Request) -> None:
+        if request.id in self._failed_request_ids:
+            raise RuntimeError(
+                f"Request {request.id} completed after terminal reclamation failure"
+            )
         # Update completion counters regardless of plotting preferences. Counter
         # update failures must propagate so corrupted completion accounting is
         # not reported as a successful simulation.
