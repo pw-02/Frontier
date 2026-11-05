@@ -38,6 +38,7 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
 
     arrivals = {}
     completions = {}
+    failures = {}
     for event in events:
         typ = event.get("event_type")
         ident = str(event.get("request_id"))
@@ -49,6 +50,15 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
             if ident in completions:
                 raise ValueError(f"Duplicate completion event for request {ident}")
             completions[ident] = event
+        elif typ == "request_failure":
+            if ident in failures:
+                raise ValueError(f"Duplicate failure event for request {ident}")
+            failures[ident] = event
+
+    if set(completions).intersection(failures):
+        raise ValueError("Request has both completion and terminal failure")
+    if (set(completions) | set(failures)) - set(arrivals):
+        raise ValueError("Terminal outcome without an arrival event")
 
     expected_all = expected_warmup + expected_measured
     if len(arrivals) != expected_all:
@@ -63,6 +73,9 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
             f"got {len(measured)}. Check Frontier timestamps/trace alignment."
         )
     completed_measured = {rid: completions[rid] for rid in measured if rid in completions}
+    failed_measured = {rid: failures[rid] for rid in measured if rid in failures}
+    failed_in_window = sum(begin <= float(e["failed_at"]) < end
+                           for e in failed_measured.values())
     latencies, waits, ttfts = [], [], []
     on_time = in_window = late_drain = 0
     for rid, event in completed_measured.items():
@@ -83,9 +96,9 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
         begin <= float(event["completed_at"]) < end
         for event in completions.values()
     )
-    backlog_end = sum(a < end for a in arrivals.values()) - sum(
-        float(e["completed_at"]) < end for e in completions.values()
-    )
+    backlog_end = (sum(a < end for a in arrivals.values())
+                   - sum(float(e["completed_at"]) < end for e in completions.values())
+                   - sum(float(e["failed_at"]) < end for e in failures.values()))
     return {
         "simulated_only": True,
         "arrival_rate_offered_rps": float(manifest["rate_per_second"]),
@@ -93,10 +106,16 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
         "warmup_arrivals": expected_warmup,
         "measured_arrivals": len(measured),
         "measured_completed_eventually": len(completed_measured),
+        "measured_failed": len(failed_measured),
+        "measured_failed_inside_window": failed_in_window,
+        "measured_failed_after_window": len(failed_measured) - failed_in_window,
+        "measured_success_fraction": len(completed_measured) / len(measured) if measured else 0,
+        "measured_failure_fraction": len(failed_measured) / len(measured) if measured else 0,
+        "measured_unresolved": len(measured) - len(completed_measured) - len(failed_measured),
         "measured_no_completion_event": len(measured) - len(completed_measured),
         "measured_completed_inside_window": in_window,
         "measured_completions_during_drain": late_drain,
-        "measured_still_outstanding_at_window_end": len(measured) - in_window,
+        "measured_still_outstanding_at_window_end": len(measured) - in_window - failed_in_window,
         "all_completion_throughput_in_window_rps": all_finished_window / duration,
         "measured_completion_throughput_in_window_rps": in_window / duration,
         "slo_seconds": slo_seconds,
@@ -112,6 +131,7 @@ def summary(events: list[dict], manifest: dict, slo_seconds: float) -> dict:
         "queue_wait_p95_s_for_completed_measured": percentile(waits, .95),
         "ttft_p95_s_for_completed_measured": percentile(ttfts, .95),
         "warning": (
+            "Failures are excluded from latency percentiles and count as SLO misses. "
             "Requests completed after the window count toward SLO attainment "
             "but not toward within-window completion throughput. Dummy "
             "execution times are not calibrated to Polaris."
