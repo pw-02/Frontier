@@ -1,215 +1,101 @@
-"""Hydra config composition smoke checks (no Frontier simulation required)."""
+"""Canonical E1–E4 Hydra and lifecycle unit smoke tests."""
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
 from pathlib import Path
 
 from hydra import compose, initialize_config_dir
 from omegaconf import OmegaConf
-from malleserve.run_state import experiment_output
 
+from malleserve.run_state import experiment_output
+from malleserve.scenario import resolve_routing_policy
+from malleserve.tools.generate_cluster_availability import generate
+from malleserve.tools.summarize_e1_e4 import PATTERN
+from frontier.transient_lifecycle import read_availability
 
 CONF = Path(__file__).resolve().parents[2] / "malleserve/conf"
 
 
-def loaded(overrides: list[str] | None = None) -> dict:
+def loaded(overrides=None):
     with initialize_config_dir(version_base=None, config_dir=str(CONF)):
-        cfg = compose(config_name="config", overrides=overrides or [])
-        result = OmegaConf.to_container(cfg, resolve=True)
-        assert isinstance(result, dict)
-        return result
+        value = OmegaConf.to_container(
+            compose(config_name="config", overrides=overrides or []), resolve=True
+        )
+    assert isinstance(value, dict)
+    return value
 
 
-class HydraScenarioTests(unittest.TestCase):
-    def test_default_transient_baseline_recovery(self):
+class CanonicalCaseTests(unittest.TestCase):
+    def test_default_is_e4(self):
         cfg = loaded()
-        self.assertEqual(cfg["policy"]["name"], "transient")
-        self.assertEqual(cfg["resources"]["mode"], "transient")
-        self.assertEqual(cfg["resources"]["persistent_gpus"], 4)
-        self.assertEqual(cfg["resources"]["lifecycle_mode"], "baseline_recovery")
-        self.assertEqual(cfg["experiment"]["name"], "transient_r10")
-
-    def test_recovery_modes_compose(self):
-        baseline = loaded(["resources.lifecycle_mode=baseline_recovery"])
-        ideal = loaded(["resources.lifecycle_mode=ideal_recovery"])
-        self.assertEqual(baseline["resources"]["lifecycle_mode"], "baseline_recovery")
-        self.assertEqual(ideal["resources"]["lifecycle_mode"], "ideal_recovery")
-        legacy = loaded(["resources=naive", "policy=naive"])
-        self.assertEqual(legacy["resources"]["lifecycle_mode"], "naive")
-
-    def test_transient_lifetime_sweep_scenario(self):
-        from malleserve.tools.generate_native_schedule import generate
-        cfg = loaded([
-            "resources=transient", "policy=transient", "workload=mooncake_r12",
-            "resources.node_lifetime_seconds=180",
-            "resources.lifecycle_mode=ideal_recovery",
-            "scheduler.routing_policy=cwa",
-            "experiment.group=transient_lifetime_sweep_r12",
-            "experiment.name=transient_l180_s40_ideal_recovery_cwa_r12",
-        ])
-        self.assertEqual(cfg["workload"]["rate"], 12)
-        self.assertEqual(cfg["resources"]["node_lifetime_seconds"], 180)
-        self.assertEqual(
-            experiment_output(cfg).parts[-3:],
-            ("transient_lifetime_sweep_r12", "transient",
-             "transient_l180_s40_ideal_recovery_cwa_r12_qwen_qwen3_8b"),
-        )
-        events = generate(330, 180)
-        self.assertEqual(
-            [(e["timestamp"], e["action"]) for e in events],
-            [(0.0, "available"), (180, "reclaim"),
-             (180, "available"), (330, "reclaim")],
-        )
-
-    def test_transient_ready_gpu_exposure(self):
-        import json
-        import tempfile
-        from malleserve.tools.generate_native_schedule import generate
-        from malleserve.tools.summarize_transient_lifetime_sweep import ready_gpu_seconds
-        with tempfile.TemporaryDirectory() as temp:
-            path = Path(temp) / "availability.jsonl"
-            for lifetime, expected in ((60, 400.0), (180, 1000.0)):
-                path.write_text(
-                    "".join(json.dumps(e) + "\n" for e in generate(330, lifetime)),
-                    encoding="utf-8",
-                )
-                self.assertEqual(ready_gpu_seconds(path, 40), expected)
-
-    def test_reclamation_controls_compose(self):
-        from malleserve.tools.summarize_transient_lifetime_sweep import PATTERN
-        for routing in ("rr", "wa", "cwa"):
-            no = f"transient_no_reclamation_s40_{routing}_r12"
-            self.assertIsNotNone(PATTERN.fullmatch(no))
-            no_cfg = loaded([
-                "resources=transient", "policy=transient", "workload=mooncake_r12",
-                "resources.lifecycle_mode=no_reclamation",
-                f"scheduler.routing_policy={routing}",
-                "experiment.group=transient_lifetime_sweep_r12",
-                f"experiment.name={no}",
-            ])
-            self.assertEqual(no_cfg["resources"]["lifecycle_mode"], "no_reclamation")
-            for recovery in ("baseline_recovery", "ideal_recovery"):
-                name = f"transient_single_reclaim_t180_s40_{recovery}_{routing}_r12"
-                self.assertIsNotNone(PATTERN.fullmatch(name))
-                cfg = loaded([
-                    "resources=transient", "policy=transient", "workload=mooncake_r12",
-                    "resources.lifecycle_mode=single_reclaim",
-                    "+resources.reclaim_at_seconds=180",
-                    f"+resources.recovery_mode={recovery}",
-                    f"scheduler.routing_policy={routing}",
-                    "experiment.group=transient_lifetime_sweep_r12",
-                    f"experiment.name={name}",
-                ])
-                self.assertEqual(cfg["resources"]["reclaim_at_seconds"], 180)
-                self.assertEqual(cfg["resources"]["recovery_mode"], recovery)
-
-    def test_large_scale_overlapping_availability(self):
-        from malleserve.tools.generate_cluster_availability import generate
-        from malleserve.tools.summarize_large_scale_sweep import PATTERN
-        from frontier.transient_lifecycle import read_availability
-        import json
-        import tempfile
-
-        cfg = loaded([
-            "resources=transient_large", "policy=transient",
-            "workload=mooncake_r34",
-            "resources.schedule_seed=19", "scheduler.routing_policy=cwa",
-            "experiment.group=large_scale_hpc_r34",
-            "experiment.name=large_s19_baseline_recovery_cwa_r34",
-        ])
-        self.assertEqual(cfg["resources"]["persistent_gpus"], 8)
+        self.assertEqual(cfg["resources"]["label"], "e4_immediate_full_restart")
+        self.assertEqual(cfg["resources"]["recovery_mode"], "full_restart")
         self.assertEqual(cfg["resources"]["candidate_nodes"], 16)
         self.assertEqual(cfg["workload"]["rate"], 34)
-        self.assertIsNotNone(PATTERN.fullmatch(cfg["experiment"]["name"]))
-        schedule = generate(duration=330, nodes=16, seed=19)
-        self.assertEqual(schedule, generate(duration=330, nodes=16, seed=19))
-        self.assertNotEqual(schedule, generate(duration=330, nodes=16, seed=20))
-        self.assertEqual(len({e["node_id"] for e in schedule}), 16)
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "events.jsonl"
-            path.write_text("".join(json.dumps(e) + "\n" for e in schedule),
-                            encoding="utf-8")
-            parsed = read_availability(str(path))
-        self.assertEqual(len(parsed), len(schedule))
-        self.assertIsNotNone(PATTERN.fullmatch("fixed32_wa_r34"))
 
-    def test_invalid_large_scale_parameters(self):
-        from malleserve.tools.generate_cluster_availability import generate
-        for overrides in (
-            {"nodes": 0}, {"duration": -1},
-            {"min_lifetime": 300, "max_lifetime": 90},
-            {"initial_spread": 330},
-        ):
-            args = {"duration": 330, "nodes": 16}
-            args.update(overrides)
-            with self.assertRaises(ValueError):
-                generate(**args)
-
-    def test_fixed_resource_groups(self):
-        for group, size in (("fixed3", 3), ("fixed4", 4), ("fixed8", 8)):
-            cfg = loaded([f"resources={group}", "policy=fixed"])
-            self.assertEqual(cfg["resources"]["gpus"], size)
-            self.assertEqual(cfg["resources"]["mode"], "fixed")
-            self.assertEqual(cfg["experiment"]["name"], f"{group}_r10")
-
-    def test_organized_output_paths(self):
-        fixed = loaded(["resources=fixed4", "policy=fixed", "workload=mooncake_r12"])
-        self.assertEqual(
-            experiment_output(fixed).parts[-3:],
-            ("runs", "fixed", "fixed4_r12_qwen_qwen3_8b"),
-        )
-        transient = loaded()
-        self.assertEqual(
-            experiment_output(transient).parts[-3:],
-            ("runs", "transient", "transient_r10_qwen_qwen3_8b"),
-        )
-
-    def test_routing_aliases_and_grouped_paths(self):
-        from malleserve.scenario import resolve_routing_policy
+    def test_all_cases(self):
         expected = {
+            "e1": ("fixed", "fixed", None),
+            "e2": ("transient", "transient", "full_restart"),
+            "e3": ("transient", "transient", "no_recovery"),
+            "e4": ("transient", "transient", "full_restart"),
+        }
+        for case, (resource_mode, policy, recovery) in expected.items():
+            with self.subTest(case=case):
+                cfg = loaded([f"case={case}", "scheduler.routing_policy=cwa",
+                              "experiment.group=e1_e4_hpc_r34",
+                              f"experiment.name={case}_test"])
+                self.assertEqual(cfg["resources"]["mode"], resource_mode)
+                self.assertEqual(cfg["policy"]["name"], policy)
+                if recovery:
+                    self.assertEqual(cfg["resources"]["recovery_mode"], recovery)
+                self.assertEqual(
+                    experiment_output(cfg).parts[-3:],
+                    ("e1_e4_hpc_r34", resource_mode, f"{case}_test_qwen_qwen3_8b"),
+                )
+
+    def test_routing_aliases(self):
+        for alias, settings in {
             "rr": ("round_robin", 1.0),
             "wa": ("kv_aware", 0.0),
             "cwa": ("kv_aware", 1.0),
-        }
-        for alias, native in expected.items():
-            cfg = loaded([
-                "resources=fixed4", "policy=fixed",
-                f"scheduler.routing_policy={alias}",
-                "experiment.group=routing_policy_sweep",
-                f"experiment.name=fixed4_{alias}_r10",
-            ])
-            self.assertEqual(resolve_routing_policy(cfg["scheduler"]), native)
-            self.assertEqual(
-                experiment_output(cfg).parts[-3:],
-                ("routing_policy_sweep", "fixed", f"fixed4_{alias}_r10_qwen_qwen3_8b"),
-            )
-
-    def test_alias_validation_and_legacy_routing(self):
-        from malleserve.scenario import resolve_routing_policy
-        self.assertEqual(resolve_routing_policy({"cluster": "round_robin"}), ("round_robin", 1.0))
-        self.assertEqual(resolve_routing_policy({"cluster": "kv_aware", "cache_weight": 0.5}), ("kv_aware", 0.5))
+        }.items():
+            cfg = loaded([f"scheduler.routing_policy={alias}"])
+            self.assertEqual(resolve_routing_policy(cfg["scheduler"]), settings)
         with self.assertRaises(ValueError):
-            resolve_routing_policy({"routing_policy": "invalid", "cluster": "round_robin"})
+            resolve_routing_policy({"cluster": "round_robin", "routing_policy": "bad"})
 
-    def test_kv_aware_routing_config(self):
-        cfg = loaded([
-            "resources=fixed4", "policy=fixed",
-            "scheduler.cluster=kv_aware",
-            "scheduler.load_weight=0.5",
-            "scheduler.cache_weight=0.0",
-            "scheduler.decode_token_weight=12.0",
-        ])
-        self.assertEqual(cfg["scheduler"]["cluster"], "kv_aware")
-        self.assertEqual(cfg["scheduler"]["load_weight"], 0.5)
-        self.assertEqual(cfg["scheduler"]["cache_weight"], 0.0)
-        self.assertEqual(cfg["scheduler"]["decode_token_weight"], 12.0)
+    def test_large_availability_is_deterministic_and_valid(self):
+        events = generate(duration=330, nodes=16, seed=7)
+        self.assertEqual(events, generate(duration=330, nodes=16, seed=7))
+        self.assertNotEqual(events, generate(duration=330, nodes=16, seed=19))
+        self.assertEqual(len({x["node_id"] for x in events}), 16)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "availability.jsonl"
+            path.write_text("".join(json.dumps(event) + "\n" for event in events),
+                            encoding="utf-8")
+            self.assertEqual(len(read_availability(str(path))), len(events))
 
-    def test_composable_overrides(self):
-        cfg = loaded(["workload=mooncake_r2", "resources.startup_seconds=0",
-                      "scheduler.max_tokens_in_batch=1024"])
-        self.assertEqual(cfg["workload"]["trace"], "data/malleserve/mooncake_r2_330s.csv")
-        self.assertEqual(cfg["resources"]["startup_seconds"], 0)
-        self.assertEqual(cfg["scheduler"]["max_tokens_in_batch"], 1024)
+    def test_summary_names(self):
+        for name in (
+            "e1_fixed8_rr_r34", "e1_fixed16_wa_r34",
+            "e1_fixed32_cwa_r34", "e2_s7_rr_r34",
+            "e3_s19_wa_r34", "e4_s41_cwa_r34",
+        ):
+            self.assertIsNotNone(PATTERN.fullmatch(name), name)
+
+    def test_synthetic_availability_validation(self):
+        for kwargs in (
+            {"duration": -1}, {"nodes": 0},
+            {"min_lifetime": 240, "max_lifetime": 90},
+            {"initial_spread": 330},
+        ):
+            args = dict(duration=330, nodes=16)
+            args.update(kwargs)
+            with self.assertRaises(ValueError):
+                generate(**args)
 
 
 if __name__ == "__main__":
